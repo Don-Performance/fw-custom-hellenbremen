@@ -180,6 +180,7 @@ void boardDefaultConfiguration() {
 
 	// Cruise control
 	config->ccFootBrakeDisengageThreshold = 50;
+	config->cruiseSetpointRampRate = 2.0f;
 
 	// PRGSEL
 	config->prgselOutputPin = Gpio::D10;
