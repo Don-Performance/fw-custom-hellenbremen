@@ -28,10 +28,10 @@ float engineBrakingEtbOffsetMode4;Engine braking ETB offset for mode 4;"%", 1, 0
 float engineBrakingEtbOffsetMode5;Engine braking ETB offset for mode 5;"%", 1, 0, -5, 5, 2
 float engineBrakingRpmEngage;Engine braking minimum engage RPM;"rpm", 1, 0, 0, 10000, 0
 float engineBrakingRpmFull;Engine braking full-effect RPM;"rpm", 1, 0, 0, 10000, 0
-float engineBrakingMinVss;Engine braking minimum VSS;"kph", 1, 0, 0, 300, 1
+float engineBrakingMinVss;Engine braking minimum VSS;{bitStringValue(velocityUnitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 0.62137119}, 0, 0, {useMetricOnInterface ? 300 : 186}, 1
 float engineBrakingMaxBaseEtbTarget;Engine braking max ETB target;"%", 1, 0, 0, 100, 1
-uint16_t vmaxLimit;Vehicle speed where ETB Vmax limiting starts. Set to 0 to disable.;"SPECIAL_CASE_SPEED", 1, 0, 0, 300, 0
-uint16_t vmaxLimitRange;Speed range above Vmax where ETB target tapers to closed.;"SPECIAL_CASE_SPEED", 1, 0, 0, 100, 0
+uint16_t vmaxLimit;Vehicle speed where ETB Vmax limiting starts. Set to 0 to disable.;{bitStringValue(velocityUnitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 0.62137119}, 0, 0, {useMetricOnInterface ? 300 : 186}, 0
+uint16_t vmaxLimitRange;Speed range above Vmax where ETB target tapers to closed.;{bitStringValue(velocityUnitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 0.62137119}, 0, 0, {useMetricOnInterface ? 100 : 62}, 0
 float[ETB_TARGET_SLEW_BINS_COUNT] etbTargetSlewOpeningBins;;"%", 1, 0, 0, 100, 1
 float[ETB_TARGET_SLEW_BINS_COUNT] etbTargetSlewMaxUpRate;;"%/s", 1, 0, 0, 1200, 1
 float[ETB_TARGET_SLEW_BINS_COUNT] etbTargetSlewMaxDownRate;;"%/s", 1, 0, 0, 1200, 1
@@ -39,42 +39,42 @@ float[ETB_TARGET_SLEW_BINS_COUNT] etbTargetSlewMaxDownRate;;"%/s", 1, 0, 0, 1200
 float[INSTANT_ACCEL_SHOT_TPS_COUNT x INSTANT_ACCEL_SHOT_TPS_COUNT] instantAccelShotTpsTable;;"ms", 1, 0, 0, 50, 2
 float[INSTANT_ACCEL_SHOT_TPS_COUNT] instantAccelShotTpsFromBins;;"%", 1, 0, 0, 100, 1
 float[INSTANT_ACCEL_SHOT_TPS_COUNT] instantAccelShotTpsToBins;;"%", 1, 0, 0, 100, 1
-int16_t[INSTANT_ACCEL_SHOT_CLT_CORR_COUNT] instantAccelShotCltCorrBins;;"SPECIAL_CASE_TEMPERATURE", 1, 0, -40, 150, 0
+int16_t[INSTANT_ACCEL_SHOT_CLT_CORR_COUNT] instantAccelShotCltCorrBins;;{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, -40, {useMetricOnInterface ? 150 : 302}, 0
 float[INSTANT_ACCEL_SHOT_CLT_CORR_COUNT] instantAccelShotCltCorrMult;;"multiplier", 1, 0, 0, 5, 2
 
-uint8_t  cfcHighSpeedThreshold;Upper Speed Threshold when to swtich to High Speed On/Off temperatures. Must be greater/equal than "Lower Speed Threshold";"SPECIAL_CASE_SPEED", 1, 0, 0, 255, 0
-uint8_t  cfcLowSpeedThreshold;Lower Speed Threshold when to swtich to Low Speed On/Off temperatures. Must be less/equal than "Upper Speed Threshold";"SPECIAL_CASE_SPEED", 1, 0, 0, 255, 0
-uint8_t  cfcLowSpeedOnTemp;Must be greater/equal than "Lower Speed Off Temperature";"SPECIAL_CASE_TEMPERATURE", 1, 0, 0, 110, 0
-uint8_t  cfcLowSpeedOffTemp;Must be less/equal than "Lower Speed On Temperature";"SPECIAL_CASE_TEMPERATURE", 1, 0, 0, 110, 0
-uint8_t  cfcHighSpeedOnTemp;Must be greater/equal than "Higher Speed Off Temperature";"SPECIAL_CASE_TEMPERATURE", 1, 0, 0, 110, 0
-uint8_t  cfcHighSpeedOffTemp;Must be less/equal than "Higher Speed On Temperature";"SPECIAL_CASE_TEMPERATURE", 1, 0, 0, 110, 0
+uint8_t  cfcHighSpeedThreshold;Upper Speed Threshold when to swtich to High Speed On/Off temperatures. Must be greater/equal than "Lower Speed Threshold";{bitStringValue(velocityUnitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 0.62137119}, 0, 0, {useMetricOnInterface ? 255 : 158}, 0
+uint8_t  cfcLowSpeedThreshold;Lower Speed Threshold when to swtich to Low Speed On/Off temperatures. Must be less/equal than "Upper Speed Threshold";{bitStringValue(velocityUnitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 0.62137119}, 0, 0, {useMetricOnInterface ? 255 : 158}, 0
+uint8_t  cfcLowSpeedOnTemp;Must be greater/equal than "Lower Speed Off Temperature";{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, {useMetricOnInterface ? 0 : 32}, {useMetricOnInterface ? 110 : 230}, 0
+uint8_t  cfcLowSpeedOffTemp;Must be less/equal than "Lower Speed On Temperature";{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, {useMetricOnInterface ? 0 : 32}, {useMetricOnInterface ? 110 : 230}, 0
+uint8_t  cfcHighSpeedOnTemp;Must be greater/equal than "Higher Speed Off Temperature";{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, {useMetricOnInterface ? 0 : 32}, {useMetricOnInterface ? 110 : 230}, 0
+uint8_t  cfcHighSpeedOffTemp;Must be less/equal than "Higher Speed On Temperature";{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, {useMetricOnInterface ? 0 : 32}, {useMetricOnInterface ? 110 : 230}, 0
 bit      cfcDisableWhenEngineStopped,"Yes","No";
 uint8_t  cfcIdleAdder;Additional idle % when fan is active;"%", 1, 0, 0, 100, 0
 uint16_t cfcMaxRuntimeAfterEngShutdown;;"s", 1, 0, 0, 65535, 0
-uint8_t  cfcEngShutdownOffTemp;Coolant temperature to cool down to after engine shutdown. Must be great/equal than "Lower Speed On Temperature";"SPECIAL_CASE_TEMPERATURE", 1, 0, 0, 110, 0
+uint8_t  cfcEngShutdownOffTemp;Coolant temperature to cool down to after engine shutdown. Must be great/equal than "Lower Speed On Temperature";{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, {useMetricOnInterface ? 0 : 32}, {useMetricOnInterface ? 110 : 230}, 0
 
 bit      prgselActive,"Yes","No";
 uint16_t prgselRPM;;"rpm", 1, 0, 0, 10000, 0
-uint8_t  prgselSpeed;;"SPECIAL_CASE_SPEED", 1, 0, 0, 255, 0
+uint8_t  prgselSpeed;;{bitStringValue(velocityUnitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 0.62137119}, 0, 0, {useMetricOnInterface ? 255 : 158}, 0
 uint8_t  prgselLowerTGS;Must be less/equal than "Activate above TGS";"%", 1, 0, 0, 100, 0
 uint8_t  prgselUpperTGS;Must be less/equal than "Activate below TGS";"%", 1, 0, 0, 100, 0
-uint8_t  prgselCltTemp;;"SPECIAL_CASE_TEMPERATURE", 1, 0, 0, 120, 0
+uint8_t  prgselCltTemp;;{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, {useMetricOnInterface ? 0 : 32}, {useMetricOnInterface ? 120 : 248}, 0
 uint8_t  prgselPWMFreq;;"Hz", 1, 0, 1, 255, 0
 uint8_t  prgselPWMDuty;;"%", 1, 0, 1, 100, 0
 uint16_t prgselActAfterTime;;"s", 1, 0, 0, 65535, 0
 
-uint8_t ccfcDisableAboveSpeed;Must be greater/equal than "Enable below vehicle speed";"SPECIAL_CASE_SPEED", 1, 0, 0, 255, 0
-uint8_t ccfcEnableBelowSpeed;Must be less/equal than "Disable above vehicle speed";"SPECIAL_CASE_SPEED", 1, 0, 0, 255, 0
-uint8_t ccfcHighAmbTempThreshold;Upper ambient temperature threshold when to swtich to high coolant temperature On/Off temperatures. Muster be greater/equal than "Low ambient temperature threshold";"SPECIAL_CASE_TEMPERATURE", 1, 0, 0, 255, 0
-uint8_t ccfcLowAmbTempThreshold;Lower ambient temperature threshold when to swtich to lower coolant temperature On/Off temperatures. Muster be less/equal than "High ambient temperature threshold";"SPECIAL_CASE_TEMPERATURE", 1, 0, 0, 255, 0
-uint8_t ccfcLowAmbDisableBelowEngTemp;Must be less/equal than "Lower Amb. Temp.: Enable above engine temperature";"SPECIAL_CASE_TEMPERATURE", 1, 0, 0, 255, 0
-uint8_t ccfcLowAmbEnableAboveEngTemp;Must be greater/equal than "Lower Amb. Temp.: Disable below engine temperature";"SPECIAL_CASE_TEMPERATURE", 1, 0, 0, 255, 0
-uint8_t ccfcHighAmbDisableBelowEngTemp;Must be less/equal than "Higher Amb. Temp.: Enable above engine temperature";"SPECIAL_CASE_TEMPERATURE", 1, 0, 0, 255, 0
-uint8_t ccfcHighAmbEnableAboveEngTemp;Must be greater/equal than "Higher Amb. Temp.: Disable below engine temperature";"SPECIAL_CASE_TEMPERATURE", 1, 0, 0, 255, 0
+uint8_t ccfcDisableAboveSpeed;Must be greater/equal than "Enable below vehicle speed";{bitStringValue(velocityUnitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 0.62137119}, 0, 0, {useMetricOnInterface ? 255 : 158}, 0
+uint8_t ccfcEnableBelowSpeed;Must be less/equal than "Disable above vehicle speed";{bitStringValue(velocityUnitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 0.62137119}, 0, 0, {useMetricOnInterface ? 255 : 158}, 0
+uint8_t ccfcHighAmbTempThreshold;Upper ambient temperature threshold when to swtich to high coolant temperature On/Off temperatures. Muster be greater/equal than "Low ambient temperature threshold";{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, {useMetricOnInterface ? 0 : 32}, {useMetricOnInterface ? 255 : 491}, 0
+uint8_t ccfcLowAmbTempThreshold;Lower ambient temperature threshold when to swtich to lower coolant temperature On/Off temperatures. Muster be less/equal than "High ambient temperature threshold";{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, {useMetricOnInterface ? 0 : 32}, {useMetricOnInterface ? 255 : 491}, 0
+uint8_t ccfcLowAmbDisableBelowEngTemp;Must be less/equal than "Lower Amb. Temp.: Enable above engine temperature";{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, {useMetricOnInterface ? 0 : 32}, {useMetricOnInterface ? 255 : 491}, 0
+uint8_t ccfcLowAmbEnableAboveEngTemp;Must be greater/equal than "Lower Amb. Temp.: Disable below engine temperature";{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, {useMetricOnInterface ? 0 : 32}, {useMetricOnInterface ? 255 : 491}, 0
+uint8_t ccfcHighAmbDisableBelowEngTemp;Must be less/equal than "Higher Amb. Temp.: Enable above engine temperature";{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, {useMetricOnInterface ? 0 : 32}, {useMetricOnInterface ? 255 : 491}, 0
+uint8_t ccfcHighAmbEnableAboveEngTemp;Must be greater/equal than "Higher Amb. Temp.: Disable below engine temperature";{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, {useMetricOnInterface ? 0 : 32}, {useMetricOnInterface ? 255 : 491}, 0
 uint8_t ccfcIdleAdder;Additional idle RPM in % when fan is active;"%", 1, 0, 0, 100, 0
 
-uint8_t cpcOnTemp;Must be greater/equal than "Lower Off Temperature";"SPECIAL_CASE_TEMPERATURE", 1, 0, 0, 110, 0
-uint8_t cpcOffTemp;Must be less/equal than "Higher Off Temperature";"SPECIAL_CASE_TEMPERATURE", 1, 0, 0, 110, 0
+uint8_t cpcOnTemp;Must be greater/equal than "Lower Off Temperature";{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, {useMetricOnInterface ? 0 : 32}, {useMetricOnInterface ? 110 : 230}, 0
+uint8_t cpcOffTemp;Must be less/equal than "Higher Off Temperature";{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, {useMetricOnInterface ? 0 : 32}, {useMetricOnInterface ? 110 : 230}, 0
 bit     cpcDisableWhenEngineStopped,"Yes","No";
 uint8_t cpcIdleAdder;Additional idle % when fan is active;"%", 1, 0, 0, 100, 0
 
@@ -104,8 +104,8 @@ uint16_t[LAMBDA_DELAY_RPM_COUNT] lambdaDelayRpmBins;;"RPM", 1, 0, 0, 18000, 0
 uint16_t[LAMBDA_DELAY_LOAD_COUNT] lambdaDelayLoadBins;;"%", 1, 0, 0, 100, 0
 
 uint16_t autotuneMinRPM;;"RPM", 1, 0, 0, 18000, 0
-int16_t  autotuneMinETS;;"C", 1, 0, -40, 250, 0
-int16_t  autotuneMaxETS;;"C", 1, 0, -40, 250, 0
+int16_t  autotuneMinETS;;{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, -40, {useMetricOnInterface ? 250 : 482}, 0
+int16_t  autotuneMaxETS;;{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, -40, {useMetricOnInterface ? 250 : 482}, 0
 uint16_t autoscale autotuneMinAFR;;"AFR", 0.1, 0, 0, 25, 1
 uint16_t autoscale autotuneMaxAFR;;"AFR", 0.1, 0, 0, 25, 1
 uint16_t autotuneApplyPeriod;;"sec", 1, 0, 1, 300, 0
@@ -156,11 +156,11 @@ bit atIdleBaseAutoApply,"Yes","No";
 bit atIdleBaseAutoBurn,"Yes","No";
 bit atIdleBaseFetchDataDone,"Yes","No";
 bit atIdleBaseApplyToRamInd,"Yes","No";
-int16_t atIdleBaseStartTempPersist;;"C", 1, 0, -40, 250, 0
+int16_t atIdleBaseStartTempPersist;;{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, -40, {useMetricOnInterface ? 250 : 482}, 0
 
 uint16_t atIdleBaseMinRpm;Learning only above this RPM;"RPM", 1, 0, 0, 18000, 0
-int16_t  atIdleBaseMinClt;Learning can only be started below this CLT;"C", 1, 0, -40, 250, 0
-int16_t  atIdleBaseMaxClt;Learning stops above this CLT;"C", 1, 0, -40, 250, 0
+int16_t  atIdleBaseMinClt;Learning can only be started below this CLT;{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, -40, {useMetricOnInterface ? 250 : 482}, 0
+int16_t  atIdleBaseMaxClt;Learning stops above this CLT;{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, -40, {useMetricOnInterface ? 250 : 482}, 0
 uint8_t  atIdleBaseMaxTgs;Learning only below this pedal position;"%", 1, 0, 0, 100, 0
 uint16_t atIdleBaseApplyPeriod;;"sec", 1, 0, 1, 300, 0
 
