@@ -2,7 +2,7 @@
 
 #include "pch.h"
 #include "cyclic_buffer.h"
-#include "board_autotune_state_generated.h"
+#include "generated/live_data_generated/board_autotune_state_generated.h"
 #include <rusefi/timer.h>
 
 struct bilinear_cell_selection_s {

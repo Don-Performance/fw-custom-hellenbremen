@@ -1,7 +1,7 @@
 #pragma once
 
 #include "pch.h"
-#include "board_at_idle_base_state_generated.h"
+#include "generated/live_data_generated/board_at_idle_base_state_generated.h"
 #include <rusefi/timer.h>
 
 class AtIdleBase : public board_at_idle_base_state_s {
