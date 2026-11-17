@@ -1,5 +1,5 @@
 struct_no_prefix board_autotune_state_s
-	bit autotuneRunning;VE autotune: running
-	bit autotuneFetchDataDone;VE autotune: fetch data done
-	bit autotuneApplyToRamInd;VE autotune: applied to RAM
+	bit autotuneRunning;VE AT: running
+	bit autotuneFetchDataDone;VE AT: fetch data done
+	bit autotuneApplyToRamInd;VE AT: applied to RAM
 end_struct
