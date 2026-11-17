@@ -313,6 +313,10 @@ void decreaseDesiredCCSpeedForCurrentGear() {
 }
 } // namespace
 
+float boardCruiseSetpointRampRate() {
+	return config->cruiseSetpointRampRate;
+}
+
 void boardPeriodicSlow() {
 	bool jssDown        = isJssDown();
 	uint8_t currentGear = calculateHarleyGearIndex();
