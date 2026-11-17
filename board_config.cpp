@@ -369,8 +369,31 @@ static void boardSanitizeConfig() {
 	}
 }
 
+// Writes the 96-bit STM32 unique ID as 24 uppercase hex characters, most significant word first
+// (UID[2] UID[1] UID[0]). The field is fixed-length and not null-terminated, like vinNumber.
+static void setDpecmHardwareId() {
+	static_assert(sizeof(config->dpecmHardwareID) == 3 * 8, "dpecmHardwareID must hold 3 words as hex");
+
+#if EFI_PROD_CODE
+	const uint32_t* uid = reinterpret_cast<const uint32_t*>(UID_BASE);
+	const uint32_t words[3] = { uid[2], uid[1], uid[0] };
+#else
+	const uint32_t words[3] = { 0, 0, 0 };
+#endif // EFI_PROD_CODE
+
+	static const char hexDigits[] = "0123456789ABCDEF";
+	size_t pos = 0;
+	for (uint32_t word : words) {
+		for (int shift = 28; shift >= 0; shift -= 4) {
+			config->dpecmHardwareID[pos++] = hexDigits[(word >> shift) & 0xF];
+		}
+	}
+}
+
 // Set when booted and after burn
 void boardConfigOverrides() {
+	setDpecmHardwareId();
+
 	setHellenAnalogDividers();
 	setHellenCan();
 	hellenMegaSdWithAccelerometer();
