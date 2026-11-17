@@ -2,4 +2,5 @@ struct_no_prefix board_autotune_state_s
 	bit autotuneRunning;VE AT: running
 	bit autotuneFetchDataDone;VE AT: fetch data done
 	bit autotuneApplyToRamInd;VE AT: applied to RAM
+	bit autotunePageRefreshFlag;VE AT: page refresh
 end_struct

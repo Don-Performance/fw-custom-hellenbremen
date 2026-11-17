@@ -52,6 +52,7 @@ public:
 	bool isRunning() const;
 
 	void prepareFetchData();
+	void onLiveDataRead();
 	void resetApplyToRAMIndicator();
 	void resetConfiguration();
 
@@ -71,6 +72,8 @@ private:
 	bool m_fetchDataDone = false;
 	bool m_pendingBurn   = false;
 	bool m_tuneRan       = false;
+	// New data was fetched into page 4 and TS has not been told yet
+	bool m_pageRefreshPending = false;
 
 	Timer m_autoApplyTimer;
 

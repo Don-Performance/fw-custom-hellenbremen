@@ -2,4 +2,5 @@ struct_no_prefix board_at_idle_base_state_s
 	bit atIdleBaseRunning;Idle base AT: running
 	bit atIdleBaseFetchDataDone;Idle base AT: fetch data done
 	bit atIdleBaseApplyToRamInd;Idle base AT: applied to RAM
+	bit atIdleBasePageRefreshFlag;Idle base AT: page refresh
 end_struct

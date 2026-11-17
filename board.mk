@@ -10,7 +10,8 @@ else
                 $(BOARD_DIR)/board_instant_accel_shot.cpp \
                 $(BOARD_DIR)/board_uds.cpp \
                 $(BOARD_DIR)/board_autotune.cpp \
-                $(BOARD_DIR)/board_atIdleBase.cpp
+                $(BOARD_DIR)/board_atIdleBase.cpp \
+                $(BOARD_DIR)/board_page3.cpp
 endif
 
 BOARDINC += $(BOARD_DIR)/generated/controllers/generated

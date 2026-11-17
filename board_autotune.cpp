@@ -5,11 +5,13 @@
 #include "airmass.h"
 #include "board_types.h"
 #include "board_autotune.h"
+#include "board_page3.h"
 
 AutotuneState autotuneState;
 
 template<>
 const board_autotune_state_s* getLiveData(size_t) {
+	autotuneState.onLiveDataRead();
 	return &autotuneState;
 }
 
@@ -389,15 +391,28 @@ void AutotuneState::onShutdown() {
 }
 
 void AutotuneState::prepareFetchData() {
-	copyTable(config->veFrontTableTmp,   m_front.veTable);
-	copyTable(config->veFrontTableDelta, m_front.veTableDelta);
-	copyTable(config->veFrontTableHits,  m_front.hitCount);
+	copyTable(boardTableLivedataOutput.veFrontTableTmp,   m_front.veTable);
+	copyTable(boardTableLivedataOutput.veFrontTableDelta, m_front.veTableDelta);
+	copyTable(boardTableLivedataOutput.veFrontTableHits,  m_front.hitCount);
 
-	copyTable(config->veRearTableTmp,   m_rear.veTable);
-	copyTable(config->veRearTableDelta, m_rear.veTableDelta);
-	copyTable(config->veRearTableHits,  m_rear.hitCount);
+	copyTable(boardTableLivedataOutput.veRearTableTmp,   m_rear.veTable);
+	copyTable(boardTableLivedataOutput.veRearTableDelta, m_rear.veTableDelta);
+	copyTable(boardTableLivedataOutput.veRearTableHits,  m_rear.hitCount);
+
+	m_pageRefreshPending = true;
 
 	return;
+}
+
+// Raises the page refresh flag for exactly one live data read after a fetch,
+// so TS re-reads page 4 once (see board_event_triggers.ini)
+void AutotuneState::onLiveDataRead() {
+	if (autotunePageRefreshFlag) {
+		autotunePageRefreshFlag = false;
+	} else if (m_pageRefreshPending) {
+		autotunePageRefreshFlag = true;
+		m_pageRefreshPending    = false;
+	}
 }
 
 void AutotuneState::toggleAutoApply() {
