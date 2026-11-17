@@ -10,3 +10,7 @@ Usages:
   - name: board_at_idle_base_state
     java: BoardAtIdleBaseState.java
     input_folder: ../../..
+
+  - name: board_actuator_state
+    java: BoardActuatorState.java
+    input_folder: ../../..

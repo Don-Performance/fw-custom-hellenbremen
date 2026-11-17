@@ -6,3 +6,4 @@
 
 #include "generated/live_data_generated/board_autotune_state_generated.h"
 #include "generated/live_data_generated/board_at_idle_base_state_generated.h"
+#include "generated/live_data_generated/board_actuator_state_generated.h"
