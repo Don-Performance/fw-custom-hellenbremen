@@ -8,6 +8,11 @@
 
 AutotuneState autotuneState;
 
+template<>
+const board_autotune_state_s* getLiveData(size_t) {
+	return &autotuneState;
+}
+
 AutotuneState::AutotuneState() {
 	return;
 }
@@ -19,9 +24,9 @@ AutotuneState::~AutotuneState() {
 }
 
 void AutotuneState::initializeStates() {
-	config->autotuneRunning = running;
-	config->autotuneFetchDataDone = fetchDataDone;
-	config->autotuneApplyToRamInd = false;
+	autotuneRunning = running;
+	autotuneFetchDataDone = fetchDataDone;
+	autotuneApplyToRamInd = false;
 
 	narrowbandTuning  = !engineConfiguration->enableAemXSeries;
 	stftBefore        = engineConfiguration->fuelClosedLoopCorrectionEnabled;
@@ -161,7 +166,7 @@ void AutotuneState::toggleRunning() {
 
 		applyCellChangeResistancePreset();
 
-		config->autotuneFetchDataDone = false;
+		autotuneFetchDataDone = false;
 		checkCyclicBufferSize();
 		// A new session must not evaluate delayed samples from the previous one,
 		// even if the configured buffer size has not changed.
@@ -175,7 +180,7 @@ void AutotuneState::toggleRunning() {
 		running = true;
 	}
 
-	config->autotuneRunning = running;
+	autotuneRunning = running;
 
 	return;
 }
@@ -352,7 +357,7 @@ void AutotuneState::applyingToRAM() {
 	copyTable(config->veTable,      m_rear.veTable);
 	copyTable(config->veFrontTable, m_front.veTable);
 
-	config->autotuneApplyToRamInd = true;
+	autotuneApplyToRamInd = true;
 	m_pendingBurn = true; 
 	tuneRan = false;
 
@@ -437,7 +442,7 @@ void AutotuneState::applyCellChangeResistancePreset() {
 }
 
 void AutotuneState::resetApplyToRAMIndicator() {
-	config->autotuneApplyToRamInd = false;
+	autotuneApplyToRamInd = false;
 }
 
 void AutotuneState::prepareNarrowBandTuning() {

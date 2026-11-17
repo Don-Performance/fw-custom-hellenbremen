@@ -37,6 +37,8 @@ jobs:
           run_simulator: false
           MY_REPO_PAT: ${{secrets.MY_REPO_PAT}}
           ADDITIONAL_ENV: ${{secrets.ADDITIONAL_ENV}}
+          # Board live data (relative to ext/rusefi/firmware); the leading comma appends it to rusEFI's LiveData.yaml
+          EXTRA_LIVE_DATA_FILE: ",../../../board_live_data.yaml"
 
       - name: Extract firmware artifacts from bundle
         run: |

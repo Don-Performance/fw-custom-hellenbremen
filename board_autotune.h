@@ -2,6 +2,7 @@
 
 #include "pch.h"
 #include "cyclic_buffer.h"
+#include "board_autotune_state_generated.h"
 #include <rusefi/timer.h>
 
 struct bilinear_cell_selection_s {
@@ -52,7 +53,7 @@ struct autotune_sample_s {
 	bool processed = false;
 };
 
-class AutotuneState {
+class AutotuneState : public board_autotune_state_s {
 public:
 	AutotuneState();
 	~AutotuneState();

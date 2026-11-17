@@ -1,9 +1,10 @@
 #pragma once
 
 #include "pch.h"
+#include "board_at_idle_base_state_generated.h"
 #include <rusefi/timer.h>
 
-class AtIdleBase {
+class AtIdleBase : public board_at_idle_base_state_s {
 public:
 	struct bilinear_cellselection_atIdleBase_s {
 		size_t cltIdx0;

@@ -1,0 +1,12 @@
+# Board-specific live data, appended to rusEFI's integration/LiveData.yaml through
+# EXTRA_LIVE_DATA_FILE (see .github/workflows/build-firmware.yaml and compile_firmware.sh).
+# Paths are relative to ext/rusefi/firmware. Every struct listed here needs a
+# getLiveData<>() specialization in board code and its generated header in livedata_board_extra.h.
+Usages:
+  - name: board_autotune_state
+    java: BoardAutotuneState.java
+    input_folder: ../../..
+
+  - name: board_at_idle_base_state
+    java: BoardAtIdleBaseState.java
+    input_folder: ../../..
