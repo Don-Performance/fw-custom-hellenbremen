@@ -17,6 +17,13 @@
 #include "defaults.h"
 #include "hellen_meta.h"
 
+#if EFI_PROD_CODE && EFI_USE_OPENBLT
+/* communication with OpenBLT that is plain C */
+extern "C" {
+	#include "openblt/shared_params.h"
+};
+#endif
+
 #define HARLEY_V_TWIN 45.0
 
 static void o2SensorInitialization() {
@@ -613,6 +620,79 @@ void boardCustomInitHardware() {
 	o2SensorInitialization();
 }
 
+#if EFI_PROD_CODE
+static virtual_timer_t hardResetTimer;
+
+/**
+ * Brings the MCU as close as possible to the state after a full power cycle, then resets.
+ * Runs from a virtual timer callback (ISR context) so the TS OK response can go out first.
+ *
+ * A plain NVIC_SystemReset() keeps everything powered by VBAT/backup regulator alive.
+ * A real power cycle on this board (no backup battery) loses all of that, so clear it here:
+ * - backup domain (RTC, RTC backup registers incl. stepper position / ign counter)
+ * - backup SRAM (boot counter, stored error/crash state)
+ * - latched reset cause flags
+ * - OpenBLT shared params flag, so the bootloader starts the firmware instead of staying resident
+ */
+static void boardHardResetNow(virtual_timer_t*, void*) {
+	__disable_irq();
+
+#if EFI_USE_OPENBLT
+	SharedParamsInit();
+	SharedParamsWriteByIndex(0, 0x00);
+#endif
+
+#if defined(STM32F7XX)
+	// Unlock backup domain write access
+	RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+	(void)RCC->APB1ENR;
+	PWR->CR1 |= PWR_CR1_DBP;
+	while ((PWR->CR1 & PWR_CR1_DBP) == 0) {
+	}
+
+	// Backup SRAM is not cleared by a backup domain reset: wipe it explicitly
+	RCC->AHB1ENR |= RCC_AHB1ENR_BKPSRAMEN;
+	(void)RCC->AHB1ENR;
+	volatile uint32_t* bkpSram = reinterpret_cast<volatile uint32_t*>(BKPSRAM_BASE);
+	for (size_t i = 0; i < 4096 / sizeof(uint32_t); i++) {
+		bkpSram[i] = 0;
+	}
+
+	// Backup domain reset: RTC, LSE config and RTC backup registers
+	RCC->BDCR |= RCC_BDCR_BDRST;
+	RCC->BDCR &= ~RCC_BDCR_BDRST;
+
+	// Clear latched reset cause flags
+	RCC->CSR |= RCC_CSR_RMVF;
+#endif
+
+	// Make sure nothing written above (e.g. OpenBLT shared params in SRAM) is lost in D-cache
+#if defined(__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1U)
+	if (SCB->CCR & SCB_CCR_DC_Msk) {
+		SCB_CleanDCache();
+	}
+#endif
+	__DSB();
+
+	// System reset: core and all peripherals, all GPIOs back to reset state (hi-Z)
+	NVIC_SystemReset();
+}
+#endif // EFI_PROD_CODE
+
+static void boardScheduleHardReset() {
+	if (!engine->rpmCalculator.isStopped()) {
+		efiPrintf("Hard reset refused: engine is not stopped");
+		return;
+	}
+
+#if EFI_PROD_CODE
+	efiPrintf("Hard reset in 500 ms...");
+	chibios_rt::CriticalSectionLocker csl;
+	// Short delay so the TS OK response for this command is still sent
+	chVTSetI(&hardResetTimer, TIME_MS2I(500), boardHardResetNow, nullptr);
+#endif
+}
+
 void boardHandleTsCommand(uint16_t subsystem, uint16_t index) {
 	switch(index) {
 		case 0x00:
@@ -685,6 +765,9 @@ void boardHandleTsCommand(uint16_t subsystem, uint16_t index) {
 			break;
 		case 0x16:
 			inhibitCfcUserForce();
+			break;
+		case 0x17:
+			boardScheduleHardReset();
 			break;
 		default:
 			break;
