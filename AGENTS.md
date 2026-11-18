@@ -4,7 +4,7 @@
 
 Custom Harley-Davidson ECM firmware for the Hellen Bremen board (Hellen mega-mcu144,
 STM32F7, OpenBLT). The root contains board-specific C++ and configuration inputs.
-`ext/rusefi/` is a Git submodule pointing to the `P4ulBr4ndt/rusefi` fork; it supplies
+`ext/rusefi/` is a Git submodule pointing to the `Don-Performance/rusefi` fork; it supplies
 the engine-control framework, hardware support, generators, simulator, and tests.
 Prefer implementing custom behavior in the root through existing board hooks.
 
