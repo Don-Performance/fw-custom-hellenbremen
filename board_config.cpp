@@ -650,10 +650,10 @@ void boardHandleTsCommand(uint16_t subsystem, uint16_t index) {
 			break;
 		case 0x0B:
 			autotuneState.prepareFetchData();
-			config->autotuneFetchDataDone = true;
+			autotuneState.autotuneFetchDataDone = true;
 			break;
 		case 0x0C:
-			config->autotuneFetchDataDone = false;
+			autotuneState.autotuneFetchDataDone = false;
 			break;
 		case 0x0D:
 			autotuneState.toggleAutoApply();
@@ -672,10 +672,10 @@ void boardHandleTsCommand(uint16_t subsystem, uint16_t index) {
 			break;
 		case 0x12:
 			atIdleBaseState.prepareFetchData();
-			config->atIdleBaseFetchDataDone = true;
+			atIdleBaseState.atIdleBaseFetchDataDone = true;
 			break;
 		case 0x13:
-			config->atIdleBaseFetchDataDone = false;
+			atIdleBaseState.atIdleBaseFetchDataDone = false;
 			break;
 		case 0x14:
 			atIdleBaseState.toggleAutoApply();

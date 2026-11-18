@@ -12,6 +12,8 @@
 #define FUEL_RPM_COUNT 24
 #define VE_RPM_COUNT 24
 #define FUEL_LOAD_COUNT 14
+// Same value as rusefi_config.txt; repeated here because the board page generator (board_page3.txt) only reads prepends
+#define CLT_IDLE_TABLE_CLT_SIZE 8
 
 #define TPS_PPS_TOO_LOW_THRESHOLD -25
 #define MAX_TPS_PPS_DISCREPANCY 10

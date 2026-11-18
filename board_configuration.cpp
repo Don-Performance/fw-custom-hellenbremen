@@ -5,6 +5,7 @@
 #include "board_can.h"
 #include "board_config.h"
 #include "board_instant_accel_shot.h"
+#include "board_page3.h"
 
 #include "pwm_generator_logic.h"
 #include "tunerstudio.h"
@@ -39,4 +40,5 @@ void setup_custom_board_overrides() {
 	custom_board_InitHardware = boardCustomInitHardware;
 	custom_board_ts_command = boardHandleTsCommand;
 	custom_board_OnConfigurationChange = boardCustomOnConfigurationChange;
+	custom_board_ts_page = boardGetTsPage;
 }

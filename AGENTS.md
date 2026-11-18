@@ -40,6 +40,8 @@ Prefer implementing custom behavior in the root through existing board hooks.
 | `board_uds.cpp`, `.h` | UDS diagnostics over CAN/ISO-TP, data identifiers, VIN writes, and reset/programming requests. |
 | `board_config.txt` | Custom persistent configuration fields, tables, dimensions, units, scales, and limits. |
 | `board_engine_configuration.txt` | Board additions to engine configuration. |
+| `board_page3.txt`, `board_page3.cpp`, `.h`, `board_event_triggers.ini` | TS page 4 (`TS_PAGE_BOARD`, `0x0300`): RAM-only, read-only autotune result tables, served through `custom_board_ts_page`; the refresh trigger tells TS to re-read it after a fetch. Only `prepend.txt`/shared defines are visible to `board_page3.txt`. |
+| `board_live_data.yaml`, `board_*_state.txt`, `livedata_board_extra.h` | Board live data (TS output channels, not persisted): struct definitions, their registration via `EXTRA_LIVE_DATA_FILE`, and the header hook for `live_data.cpp`. Each struct needs a `getLiveData<>()` specialization. |
 | `prepend.txt` | Generator input defines: table sizes, labels, and TunerStudio visibility options. |
 | `board_*.ini` | Handwritten TunerStudio UI fragments: panels, tables, curves, menus, gauges, indicators, and commands. These are editable inputs. |
 | `board_types.h`, `knock_config.h`, `default_tune.cpp` | Board types, knock settings, and tune defaults. |

@@ -5,6 +5,7 @@
 #include "board_types.h"
 
 #include "board_can.h"
+#include "generated/live_data_generated/board_actuator_state_generated.h"
 
 #include <cmath>
 #include <cstdint>
@@ -68,8 +69,12 @@ static bool prgselForce = false;
 static bool cpcForce       = false;
 static bool cpcUserForceOn = false;
 
-// Required for indicators
-extern StoredValueSensor luaGauges[LUA_GAUGE_COUNT];
+static board_actuator_state_s boardActuatorState;
+
+template<>
+const board_actuator_state_s* getLiveData(size_t) {
+	return &boardActuatorState;
+}
 
 // Vehicles without a jiffy stand switch must never report the stand as down
 static bool isJssDown() {
@@ -511,13 +516,12 @@ void boardPeriodicSlow() {
 		cpcPin.setValue(false);
 	}
 
-	// luaGauges[6]: CCFC state    — 0=Disabled, 1=Off, 2=Auto, 3=On
-	// luaGauges[7]: running flags — cpcRunning*8 + ccfcRunning*4 + cfcRunning*2 + prgselRunning  (0-15)
-	luaGauges[6].setValidValue(ccfcActivated ? (3.0f - static_cast<float>(ccfcMode)) : 0.0f, getTimeNowNt());
-	luaGauges[7].setValidValue((cpcPin.getLogicValue()    ? 8.0f : 0.0f)
-	                           + (ccfcPin.getLogicValue() ? 4.0f : 0.0f)
-	                           + (cfcPin.getLogicValue()  ? 2.0f : 0.0f)
-							   + (prgselRunning           ? 1.0f : 0.0f), getTimeNowNt());
+	// ccfcState: 0=Disabled, 1=Off, 2=Auto, 3=On
+	boardActuatorState.cfcActive     = cfcPin.getLogicValue();
+	boardActuatorState.ccfcActive    = ccfcPin.getLogicValue();
+	boardActuatorState.cpcActive     = cpcPin.getLogicValue();
+	boardActuatorState.prgselRunning = prgselRunning;
+	boardActuatorState.ccfcState     = ccfcActivated ? (3 - static_cast<uint8_t>(ccfcMode)) : 0;
 
 	// Put cruise control in standby for negative TGS when CC is enabled
 	 if(currTGS < -5.0f && getCCStatus() == CruiseControlStatus::Enabled) {

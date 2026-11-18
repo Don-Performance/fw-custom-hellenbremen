@@ -2,6 +2,7 @@
 
 #include "pch.h"
 #include "cyclic_buffer.h"
+#include "generated/live_data_generated/board_autotune_state_generated.h"
 #include <rusefi/timer.h>
 
 struct bilinear_cell_selection_s {
@@ -52,7 +53,7 @@ struct autotune_sample_s {
 	bool processed = false;
 };
 
-class AutotuneState {
+class AutotuneState : public board_autotune_state_s {
 public:
 	AutotuneState();
 	~AutotuneState();
@@ -70,6 +71,7 @@ public:
 	void burningROM();
 	void onShutdown();
 	void prepareFetchData();
+	void onLiveDataRead();
 	void resetApplyToRAMIndicator();
 	void prepareNarrowBandTuning();
 	void endNarrowBandTuning();
@@ -93,6 +95,8 @@ private:
 	Timer m_autoApplyTimer;
 	// Applying to RAM and persisting to flash are separate operations.
 	bool m_pendingBurn = false;
+	// New data was fetched into page 4 and TS has not been told yet
+	bool m_pageRefreshPending = false;
 
 	live_data_autotune_s m_front;
 	live_data_autotune_s m_rear;
