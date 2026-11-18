@@ -211,5 +211,5 @@ uint16_t ccFootBrakeDisengageThreshold;Cruise control disengages when the foot b
 uint16_t autoscale cruiseSetpointRampRate;Cruise control ramps its target speed up at this rate when resuming or raising the set speed, so the throttle doesn't kick open.;"km/h/s", 0.1, 0, 0.5, 20, 1
 
 ! Literal size: board_config.txt is loaded via -readfile, which resolves double-at variable references before any #define (here or in prepend.txt) is known
-custom dpecm_hardware_id_t 24 string, ASCII, @OFFSET@, 24
+custom dpecm_hardware_id_t 24 string, ASCII, @OFFSET@, 24, 24
 dpecm_hardware_id_t dpecmHardwareID;96-bit STM32 unique ID as 24 uppercase hex characters (word order UID[2] UID[1] UID[0]). Overwritten on every boot and burn.
