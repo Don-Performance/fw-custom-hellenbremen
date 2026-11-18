@@ -213,3 +213,5 @@ uint16_t autoscale cruiseSetpointRampRate;Cruise control ramps its target speed 
 ! Literal size: board_config.txt is loaded via -readfile, which resolves double-at variable references before any #define (here or in prepend.txt) is known
 custom dpecm_hardware_id_t 24 string, ASCII, @OFFSET@, 24, 24
 dpecm_hardware_id_t dpecmHardwareID;96-bit STM32 unique ID as 24 uppercase hex characters (word order UID[2] UID[1] UID[0]). Overwritten on every boot and burn.
+custom dpecm_hardware_rev_t 16 string, ASCII, @OFFSET@, 16, 16
+dpecm_hardware_rev_t dpecmHardwareRev;Hardware revision, programmed once in production into the STM32 OTP memory. Shows UNPROGRAMMED or INVALID if no valid OTP block exists. Overwritten on every boot and burn.

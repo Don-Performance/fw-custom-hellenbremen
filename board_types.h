@@ -19,3 +19,4 @@ enum class autotuneCellChangeResistance_e : uint8_t {
 // C++ side of the custom string type in board_config.txt (like vin_number_t in rusefi_types.h).
 // The size must match the literal there.
 using dpecm_hardware_id_t = char[24];
+using dpecm_hardware_rev_t = char[16];

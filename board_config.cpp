@@ -6,7 +6,10 @@
 #include "board_atIdleBase.h"
 #include "board_types.h"
 
+#include <cstddef>
 #include <cstring>
+
+#include "rusefi/crc.h"
 
 #include "board_etb_maps.h"
 #include "board_instant_accel_shot.h"
@@ -390,9 +393,93 @@ static void setDpecmHardwareId() {
 	}
 }
 
+// Hardware revision block in the STM32F7 OTP area (16 blocks x 64 bytes at FLASH_OTP_BASE).
+// Written once in production over SWD; see bin/make_hw_rev_otp.py, which must match this layout.
+struct DpecmOtpBlock {
+	char magic[4];          // "DPHW"
+	uint8_t layoutVersion;  // kDpecmOtpLayoutVersion
+	char hardwareRev[16];   // printable ASCII, padded with '\0'
+	uint8_t reserved[39];
+	uint32_t crc;           // CRC32 (zlib) over bytes 0..59, little-endian
+};
+
+static_assert(sizeof(DpecmOtpBlock) == 64, "OTP block must be 64 bytes");
+static_assert(offsetof(DpecmOtpBlock, crc) == 60, "CRC must be the last 4 bytes of the OTP block");
+static_assert(sizeof(DpecmOtpBlock::hardwareRev) == sizeof(dpecm_hardware_rev_t), "OTP revision must match dpecmHardwareRev");
+
+#if EFI_PROD_CODE
+static constexpr size_t kDpecmOtpBlockCount = 16;
+static constexpr uint8_t kDpecmOtpLayoutVersion = 1;
+
+static_assert(FLASH_OTP_BASE + kDpecmOtpBlockCount * sizeof(DpecmOtpBlock) <= FLASH_OTP_END + 1, "OTP data blocks out of range");
+
+static bool isOtpBlockErased(const DpecmOtpBlock& block) {
+	const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&block);
+	for (size_t i = 0; i < sizeof(block); i++) {
+		if (bytes[i] != 0xFF) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool isOtpBlockValid(const DpecmOtpBlock& block) {
+	if (std::memcmp(block.magic, "DPHW", sizeof(block.magic)) != 0) {
+		return false;
+	}
+	if (block.layoutVersion != kDpecmOtpLayoutVersion) {
+		return false;
+	}
+	if (crc32(&block, offsetof(DpecmOtpBlock, crc)) != block.crc) {
+		return false;
+	}
+	// Printable text, then only '\0' padding
+	bool padding = false;
+	for (char c : block.hardwareRev) {
+		if (c == '\0') {
+			padding = true;
+		} else if (padding || c < 0x20 || c > 0x7E) {
+			return false;
+		}
+	}
+	return block.hardwareRev[0] != '\0';
+}
+#endif // EFI_PROD_CODE
+
+// The last valid OTP block wins, so a wrong entry can be superseded by programming the next block.
+static void setDpecmHardwareRev() {
+	const char* fallback = "UNPROGRAMMED";
+	const DpecmOtpBlock* found = nullptr;
+
+#if EFI_PROD_CODE
+	const DpecmOtpBlock* blocks = reinterpret_cast<const DpecmOtpBlock*>(FLASH_OTP_BASE);
+	bool anyProgrammed = false;
+	for (size_t i = 0; i < kDpecmOtpBlockCount; i++) {
+		if (isOtpBlockErased(blocks[i])) {
+			continue;
+		}
+		anyProgrammed = true;
+		if (isOtpBlockValid(blocks[i])) {
+			found = &blocks[i];
+		}
+	}
+	if (found == nullptr && anyProgrammed) {
+		fallback = "INVALID";
+	}
+#endif // EFI_PROD_CODE
+
+	std::memset(config->dpecmHardwareRev, 0, sizeof(config->dpecmHardwareRev));
+	if (found != nullptr) {
+		std::memcpy(config->dpecmHardwareRev, found->hardwareRev, sizeof(config->dpecmHardwareRev));
+	} else {
+		std::memcpy(config->dpecmHardwareRev, fallback, std::strlen(fallback));
+	}
+}
+
 // Set when booted and after burn
 void boardConfigOverrides() {
 	setDpecmHardwareId();
+	setDpecmHardwareRev();
 
 	setHellenAnalogDividers();
 	setHellenCan();
