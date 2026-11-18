@@ -9,6 +9,9 @@
 
 #define PEDAL_TO_TPS_SIZE 14
 
+! Used via @@...@@ in board_config.txt, so it must be defined here (board_config.txt is substituted before its own #defines are registered)
+#define DPECM_HARDWARE_ID_SIZE 24
+
 #define FUEL_RPM_COUNT 24
 #define VE_RPM_COUNT 24
 #define FUEL_LOAD_COUNT 14
