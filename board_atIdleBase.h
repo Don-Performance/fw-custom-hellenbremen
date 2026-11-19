@@ -1,9 +1,10 @@
 #pragma once
 
 #include "pch.h"
+#include "generated/live_data_generated/board_at_idle_base_state_generated.h"
 #include <rusefi/timer.h>
 
-class AtIdleBase {
+class AtIdleBase : public board_at_idle_base_state_s {
 public:
 	struct bilinear_cellselection_atIdleBase_s {
 		size_t cltIdx0;
@@ -51,6 +52,7 @@ public:
 	bool isRunning() const;
 
 	void prepareFetchData();
+	void onLiveDataRead();
 	void resetApplyToRAMIndicator();
 	void resetConfiguration();
 
@@ -70,6 +72,8 @@ private:
 	bool m_fetchDataDone = false;
 	bool m_pendingBurn   = false;
 	bool m_tuneRan       = false;
+	// New data was fetched into page 4 and TS has not been told yet
+	bool m_pageRefreshPending = false;
 
 	Timer m_autoApplyTimer;
 

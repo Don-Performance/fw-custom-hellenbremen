@@ -4,6 +4,7 @@
 #include "engine_state.h"
 
 #include "board_can.h"
+#include "generated/live_data_generated/board_actuator_state_generated.h"
 
 #include <cmath>
 #include <cstdint>
@@ -16,11 +17,14 @@
 #include "cruise_control.h"
 #include "electronic_throttle.h"
 #include "error_handling.h"
+#include "exp_average.h"
 #include "malfunction_central.h"
 #include "shutdown_controller.h"
 #include "trigger_central.h"
 
 static uint8_t frameCounter142 = 0x0;
+// Alpha-filtered RPM for the dashboard only; control paths keep using the raw sensor
+static ExpAverage dashboardRpmFilter;
 static uint8_t frameCounter144 = 0x0;
 static uint8_t frameCounter146_342 = 0x0;
 static uint8_t frameCounter148 = 0x40;
@@ -44,8 +48,12 @@ static uint32_t lastReceivedOdometer = 0;
 // Purge Valve Solenoid
 static bool prgselForce = false;
 
-// Required for indicators
-extern StoredValueSensor luaGauges[LUA_GAUGE_COUNT];
+static board_actuator_state_s boardActuatorState;
+
+template<>
+const board_actuator_state_s* getLiveData(size_t) {
+	return &boardActuatorState;
+}
 
 // Vehicles without a jiffy stand switch must never report the stand as down
 static bool isJssDown() {
@@ -358,8 +366,11 @@ void boardPeriodicSlow() {
 		prgselPwm.setFrequency(NAN); // setFrequency(NAN) deactivates the PWM schedule
 	}
 
-	// luaGauges[7]: running flags — cpcRunning*8 + ccfcRunning*4 + cfcRunning*2 + prgselRunning  (0-15)
-	luaGauges[7].setValidValue(prgselRunning ? 1.0f : 0.0f, getTimeNowNt());
+	// Softail has no CFC/CCFC/CPC: those live data fields stay at their zero default
+	boardActuatorState.prgselRunning = prgselRunning;
+	// For the app: errors that only a restart clears (warnings are not included)
+	boardActuatorState.hasFirmwareError = hasFirmwareError();
+	boardActuatorState.hasConfigError   = hasConfigError();
 
 	// Put cruise control in standby for negative TGS when CC is enabled
 	 if(currTGS < -5.0f && getCCStatus() == CruiseControlStatus::Enabled) {
@@ -381,7 +392,18 @@ void boardHandleCan(CanCycle cycle) {
 
 	if (cycle.isInterval(CI::_10ms)) { // Softail OEM sends in 8ms periods
 		CanTxMessage msg(CanCategory::NBC, 0x142);
-		msg.setShortValueMsb(Sensor::getOrZero(SensorType::Rpm), 0x0);
+		const float rawRpm = Sensor::getOrZero(SensorType::Rpm);
+		float dashboardRpm = 0;
+		if (rawRpm <= 0) {
+			// Engine stopped: drop to zero immediately and restart the filter from the next real value
+			dashboardRpmFilter.reset();
+		} else {
+			// Sanitize is only applied on burn, so guard against an unset/invalid value loaded at boot
+			const float alpha = config->canRpmFilterAlpha;
+			dashboardRpmFilter.setSmoothingFactor((alpha > 0.0f && alpha <= 1.0f) ? alpha : 1.0f);
+			dashboardRpm = dashboardRpmFilter.initOrAverage(rawRpm);
+		}
+		msg.setShortValueMsb(dashboardRpm, 0x0);
 		msg.setShortValueMsb(Sensor::getOrZero(SensorType::VehicleSpeed) * 10.f, 0x2);
 		msg[4] = calculateHarleyGearCANValue();
 		msg[6] = frameCounter142;

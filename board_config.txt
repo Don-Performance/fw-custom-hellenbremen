@@ -57,18 +57,8 @@ float fuelLevelAvgConsumption;;"L / 100 km", 1, 0, 0.1, 20, 1
 
 output_pin_e prgselOutputPin;
 
-bit autotuneRunning,"Yes","No";
 bit autotuneAutoApply,"Yes","No";
 bit autotuneAutoBurn,"Yes","No";
-
-uint16_t[VE_LOAD_COUNT x VE_RPM_COUNT] autoscale veFrontTableTmp;;"%", 0.1, 0, 0, 200, 1
-int16_t[VE_LOAD_COUNT x VE_RPM_COUNT] autoscale veFrontTableDelta;;"%", 0.1, 0, -200, 200, 1
-uint16_t[VE_LOAD_COUNT x VE_RPM_COUNT] autoscale veFrontTableHits;;"", 1, 0, 0, 65535, 1
-uint16_t[VE_LOAD_COUNT x VE_RPM_COUNT] autoscale veRearTableTmp;;"%", 0.1, 0, 0, 200, 1
-int16_t[VE_LOAD_COUNT x VE_RPM_COUNT] autoscale veRearTableDelta;;"%", 0.1, 0, -200, 200, 1
-uint16_t[VE_LOAD_COUNT x VE_RPM_COUNT] autoscale veRearTableHits;;"", 1, 0, 0, 65535, 1
-bit autotuneFetchDataDone,"Yes","No";
-bit autotuneApplyToRamInd,"Yes","No";
 
 uint16_t[LAMBDA_DELAY_LOAD_COUNT x LAMBDA_DELAY_RPM_COUNT] lambdaDelayTable;;"ms", 1, 0, 0, 640, 0
 uint16_t[LAMBDA_DELAY_RPM_COUNT] lambdaDelayRpmBins;;"RPM", 1, 0, 0, 18000, 0
@@ -122,11 +112,8 @@ uint8_t[FUEL_LOAD_COUNT x FUEL_RPM_COUNT] autoscale lambdaTableBefore;;{useLambd
 
 bit autotuneAutomaticCellChangeResistance,"Yes","No";Sets Cell Change Resistance to "Normal" if Wideband and "High" if Narrowband is configured.
 
-bit atIdleBaseRunning,"Yes","No";
 bit atIdleBaseAutoApply,"Yes","No";
 bit atIdleBaseAutoBurn,"Yes","No";
-bit atIdleBaseFetchDataDone,"Yes","No";
-bit atIdleBaseApplyToRamInd,"Yes","No";
 int16_t atIdleBaseStartTempPersist;;{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, -40, {useMetricOnInterface ? 250 : 482}, 0
 
 uint16_t atIdleBaseMinRpm;Learning only above this RPM;"RPM", 1, 0, 0, 18000, 0
@@ -170,10 +157,6 @@ float atIdleBaseActiveWeightThreshold;;"", 1, 0, 0, 10, 2
 float atIdleBaseActiveDeadband;;"", 1, 0, 0, 100, 2
 float atIdleBaseActiveMaxWeight;;"", 1, 0, 0, 1000000, 1
 
-float[CLT_IDLE_TABLE_CLT_SIZE] cltIdleBaseTableTmp;;"%", 1, 0, 0, 100, 2
-float[CLT_IDLE_TABLE_CLT_SIZE] cltIdleBaseTableDelta;;"%", 1, 0, -100, 100, 2
-uint16_t[CLT_IDLE_TABLE_CLT_SIZE] cltIdleBaseTableHits;;"", 1, 0, 0, 65535, 0
-
 bit useWidebandSensor,"Yes","No";On Change: Requires power cycle after burning to take effect
 
 bit jssInstalled,"Yes","No";Set to "No" if the vehicle has no jiffy stand switch. The jiffy stand is then always treated as retracted.
@@ -183,4 +166,10 @@ uint16_t ccFootBrakeDisengageThreshold;Cruise control disengages when the foot b
 
 uint16_t autoscale cruiseSetpointRampRate;Cruise control ramps its target speed up at this rate when resuming or raising the set speed, so the throttle doesn't kick open.;"km/h/s", 0.1, 0, 0.5, 20, 1
 
-! Check if current configuration will align with the desired size of memory
+! Literal size: board_config.txt is loaded via -readfile, which resolves double-at variable references before any #define (here or in prepend.txt) is known
+custom dpecm_hardware_id_t 24 string, ASCII, @OFFSET@, 24, 24
+dpecm_hardware_id_t dpecmHardwareID;96-bit STM32 unique ID as 24 uppercase hex characters (word order UID[2] UID[1] UID[0]). Overwritten on every boot and burn.
+custom dpecm_hardware_rev_t 16 string, ASCII, @OFFSET@, 16, 16
+dpecm_hardware_rev_t dpecmHardwareRev;Hardware revision, programmed once in production into the STM32 OTP memory. Shows UNPROGRAMMED or INVALID if no valid OTP block exists. Overwritten on every boot and burn.
+
+float canRpmFilterAlpha;Smoothing factor for the RPM sent to the dashboard (CAN 0x142, every 10 ms). 1 = unfiltered, lower = calmer needle but slower response. 0.3 settles in ~30 ms, 0.15 in ~60 ms.;"", 1, 0, 0.01, 1, 2

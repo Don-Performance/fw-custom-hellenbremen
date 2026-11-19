@@ -6,13 +6,23 @@
 #include "board_atIdleBase.h"
 #include "board_types.h"
 
+#include <cstddef>
 #include <cstring>
+
+#include "rusefi/crc.h"
 
 #include "board_etb_maps.h"
 #include "board_instant_accel_shot.h"
 #include "board_etb_control.h"
 #include "defaults.h"
 #include "hellen_meta.h"
+
+#if EFI_PROD_CODE && EFI_USE_OPENBLT
+/* communication with OpenBLT that is plain C */
+extern "C" {
+	#include "openblt/shared_params.h"
+};
+#endif
 
 #define HARLEY_V_TWIN 45.0
 
@@ -150,6 +160,9 @@ void boardDefaultConfiguration() {
 	// Cruise control
 	config->ccFootBrakeDisengageThreshold = 50;
 	config->cruiseSetpointRampRate = 2.0f;
+
+	// Dashboard output
+	config->canRpmFilterAlpha = 0.2f;
 
 	// PRGSEL
 	config->prgselOutputPin = Gpio::D10;
@@ -289,14 +302,126 @@ static void boardSanitizeConfig() {
 		config->vmaxLimitRange = 1;
 	}
 
+	// Dashboard RPM filter: invalid or missing value (e.g. 0 after layout change) means unfiltered
+	if (!(config->canRpmFilterAlpha > 0.0f && config->canRpmFilterAlpha <= 1.0f)) {
+		config->canRpmFilterAlpha = 1.0f;
+	}
+
 	// Autotune Idle Base
 	if (config->atIdleBaseMaxClt < config->atIdleBaseMinClt) {
 		config->atIdleBaseMaxClt = config->atIdleBaseMinClt;
 	}
 }
 
+// Writes the 96-bit STM32 unique ID as 24 uppercase hex characters, most significant word first
+// (UID[2] UID[1] UID[0]). The field is fixed-length and not null-terminated, like vinNumber.
+static void setDpecmHardwareId() {
+	static_assert(sizeof(config->dpecmHardwareID) == 3 * 8, "dpecmHardwareID must hold 3 words as hex");
+
+#if EFI_PROD_CODE
+	const uint32_t* uid = reinterpret_cast<const uint32_t*>(UID_BASE);
+	const uint32_t words[3] = { uid[2], uid[1], uid[0] };
+#else
+	const uint32_t words[3] = { 0, 0, 0 };
+#endif // EFI_PROD_CODE
+
+	static const char hexDigits[] = "0123456789ABCDEF";
+	size_t pos = 0;
+	for (uint32_t word : words) {
+		for (int shift = 28; shift >= 0; shift -= 4) {
+			config->dpecmHardwareID[pos++] = hexDigits[(word >> shift) & 0xF];
+		}
+	}
+}
+
+// Hardware revision block in the STM32F7 OTP area (16 blocks x 64 bytes at FLASH_OTP_BASE).
+// Written once in production over SWD; see bin/make_hw_rev_otp.py, which must match this layout.
+struct DpecmOtpBlock {
+	char magic[4];          // "DPHW"
+	uint8_t layoutVersion;  // kDpecmOtpLayoutVersion
+	char hardwareRev[16];   // printable ASCII, padded with '\0'
+	uint8_t reserved[39];
+	uint32_t crc;           // CRC32 (zlib) over bytes 0..59, little-endian
+};
+
+static_assert(sizeof(DpecmOtpBlock) == 64, "OTP block must be 64 bytes");
+static_assert(offsetof(DpecmOtpBlock, crc) == 60, "CRC must be the last 4 bytes of the OTP block");
+static_assert(sizeof(DpecmOtpBlock::hardwareRev) == sizeof(dpecm_hardware_rev_t), "OTP revision must match dpecmHardwareRev");
+
+#if EFI_PROD_CODE
+static constexpr size_t kDpecmOtpBlockCount = 16;
+static constexpr uint8_t kDpecmOtpLayoutVersion = 1;
+
+static_assert(FLASH_OTP_BASE + kDpecmOtpBlockCount * sizeof(DpecmOtpBlock) <= FLASH_OTP_END + 1, "OTP data blocks out of range");
+
+static bool isOtpBlockErased(const DpecmOtpBlock& block) {
+	const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&block);
+	for (size_t i = 0; i < sizeof(block); i++) {
+		if (bytes[i] != 0xFF) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool isOtpBlockValid(const DpecmOtpBlock& block) {
+	if (std::memcmp(block.magic, "DPHW", sizeof(block.magic)) != 0) {
+		return false;
+	}
+	if (block.layoutVersion != kDpecmOtpLayoutVersion) {
+		return false;
+	}
+	if (crc32(&block, offsetof(DpecmOtpBlock, crc)) != block.crc) {
+		return false;
+	}
+	// Printable text, then only '\0' padding
+	bool padding = false;
+	for (char c : block.hardwareRev) {
+		if (c == '\0') {
+			padding = true;
+		} else if (padding || c < 0x20 || c > 0x7E) {
+			return false;
+		}
+	}
+	return block.hardwareRev[0] != '\0';
+}
+#endif // EFI_PROD_CODE
+
+// The last valid OTP block wins, so a wrong entry can be superseded by programming the next block.
+static void setDpecmHardwareRev() {
+	const char* fallback = "UNPROGRAMMED";
+	const DpecmOtpBlock* found = nullptr;
+
+#if EFI_PROD_CODE
+	const DpecmOtpBlock* blocks = reinterpret_cast<const DpecmOtpBlock*>(FLASH_OTP_BASE);
+	bool anyProgrammed = false;
+	for (size_t i = 0; i < kDpecmOtpBlockCount; i++) {
+		if (isOtpBlockErased(blocks[i])) {
+			continue;
+		}
+		anyProgrammed = true;
+		if (isOtpBlockValid(blocks[i])) {
+			found = &blocks[i];
+		}
+	}
+	if (found == nullptr && anyProgrammed) {
+		fallback = "INVALID";
+	}
+#endif // EFI_PROD_CODE
+
+	std::memset(config->dpecmHardwareRev, 0, sizeof(config->dpecmHardwareRev));
+	if (found != nullptr) {
+		std::memcpy(config->dpecmHardwareRev, found->hardwareRev, sizeof(config->dpecmHardwareRev));
+	} else {
+		std::memcpy(config->dpecmHardwareRev, fallback, std::strlen(fallback));
+	}
+}
+
 // Set when booted and after burn
 void boardConfigOverrides() {
+	setDpecmHardwareId();
+	setDpecmHardwareRev();
+
 	setHellenAnalogDividers();
 	setHellenCan();
 	hellenMegaSdWithAccelerometer();
@@ -403,6 +528,79 @@ void boardCustomInitHardware() {
 	o2SensorInitialization();
 }
 
+#if EFI_PROD_CODE
+static virtual_timer_t hardResetTimer;
+
+/**
+ * Brings the MCU as close as possible to the state after a full power cycle, then resets.
+ * Runs from a virtual timer callback (ISR context) so the TS OK response can go out first.
+ *
+ * A plain NVIC_SystemReset() keeps everything powered by VBAT/backup regulator alive.
+ * A real power cycle on this board (no backup battery) loses all of that, so clear it here:
+ * - backup domain (RTC, RTC backup registers incl. stepper position / ign counter)
+ * - backup SRAM (boot counter, stored error/crash state)
+ * - latched reset cause flags
+ * - OpenBLT shared params flag, so the bootloader starts the firmware instead of staying resident
+ */
+static void boardHardResetNow(virtual_timer_t*, void*) {
+	__disable_irq();
+
+#if EFI_USE_OPENBLT
+	SharedParamsInit();
+	SharedParamsWriteByIndex(0, 0x00);
+#endif
+
+#if defined(STM32F7XX)
+	// Unlock backup domain write access
+	RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+	(void)RCC->APB1ENR;
+	PWR->CR1 |= PWR_CR1_DBP;
+	while ((PWR->CR1 & PWR_CR1_DBP) == 0) {
+	}
+
+	// Backup SRAM is not cleared by a backup domain reset: wipe it explicitly
+	RCC->AHB1ENR |= RCC_AHB1ENR_BKPSRAMEN;
+	(void)RCC->AHB1ENR;
+	volatile uint32_t* bkpSram = reinterpret_cast<volatile uint32_t*>(BKPSRAM_BASE);
+	for (size_t i = 0; i < 4096 / sizeof(uint32_t); i++) {
+		bkpSram[i] = 0;
+	}
+
+	// Backup domain reset: RTC, LSE config and RTC backup registers
+	RCC->BDCR |= RCC_BDCR_BDRST;
+	RCC->BDCR &= ~RCC_BDCR_BDRST;
+
+	// Clear latched reset cause flags
+	RCC->CSR |= RCC_CSR_RMVF;
+#endif
+
+	// Make sure nothing written above (e.g. OpenBLT shared params in SRAM) is lost in D-cache
+#if defined(__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1U)
+	if (SCB->CCR & SCB_CCR_DC_Msk) {
+		SCB_CleanDCache();
+	}
+#endif
+	__DSB();
+
+	// System reset: core and all peripherals, all GPIOs back to reset state (hi-Z)
+	NVIC_SystemReset();
+}
+#endif // EFI_PROD_CODE
+
+static void boardScheduleHardReset() {
+	if (!engine->rpmCalculator.isStopped()) {
+		efiPrintf("Hard reset refused: engine is not stopped");
+		return;
+	}
+
+#if EFI_PROD_CODE
+	efiPrintf("Hard reset in 500 ms...");
+	chibios_rt::CriticalSectionLocker csl;
+	// Short delay so the TS OK response for this command is still sent
+	chVTSetI(&hardResetTimer, TIME_MS2I(500), boardHardResetNow, nullptr);
+#endif
+}
+
 void boardHandleTsCommand(uint16_t subsystem, uint16_t index) {
 	switch(index) {
 		case 0x02:
@@ -422,10 +620,10 @@ void boardHandleTsCommand(uint16_t subsystem, uint16_t index) {
 			break;
 		case 0x0B:
 			autotuneState.prepareFetchData();
-			config->autotuneFetchDataDone = true;
+			autotuneState.autotuneFetchDataDone = true;
 			break;
 		case 0x0C:
-			config->autotuneFetchDataDone = false;
+			autotuneState.autotuneFetchDataDone = false;
 			break;
 		case 0x0D:
 			autotuneState.toggleAutoApply();
@@ -444,16 +642,19 @@ void boardHandleTsCommand(uint16_t subsystem, uint16_t index) {
 			break;
 		case 0x12:
 			atIdleBaseState.prepareFetchData();
-			config->atIdleBaseFetchDataDone = true;
+			atIdleBaseState.atIdleBaseFetchDataDone = true;
 			break;
 		case 0x13:
-			config->atIdleBaseFetchDataDone = false;
+			atIdleBaseState.atIdleBaseFetchDataDone = false;
 			break;
 		case 0x14:
 			atIdleBaseState.toggleAutoApply();
 			break;
 		case 0x15:
 			atIdleBaseState.resetApplyToRAMIndicator();
+			break;
+		case 0x17:
+			boardScheduleHardReset();
 			break;
 		default:
 			break;

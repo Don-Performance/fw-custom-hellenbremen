@@ -10,10 +10,14 @@ else
                 $(BOARD_DIR)/board_instant_accel_shot.cpp \
                 $(BOARD_DIR)/board_uds.cpp \
                 $(BOARD_DIR)/board_autotune.cpp \
-                $(BOARD_DIR)/board_atIdleBase.cpp
+                $(BOARD_DIR)/board_atIdleBase.cpp \
+                $(BOARD_DIR)/board_page3.cpp
 endif
 
 BOARDINC += $(BOARD_DIR)/generated/controllers/generated
+# rusEFI only includes its own console/binary/generated; without this, live_data.cpp compiles the core
+# live_data_fragments.h (no board live data) while TS_TOTAL_OUTPUT_SIZE includes it, breaking output channel reads
+BOARDINC += $(BOARD_DIR)/generated/console/binary/generated
 
 # defines SHORT_BOARD_NAME
 include $(BOARD_DIR)/meta-info.env

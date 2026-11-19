@@ -5,13 +5,20 @@
 #include "idle_thread.h"
 #include "board_types.h"
 #include "board_atIdleBase.h"
+#include "board_page3.h"
 
 AtIdleBase atIdleBaseState;
 
+template<>
+const board_at_idle_base_state_s* getLiveData(size_t) {
+	atIdleBaseState.onLiveDataRead();
+	return &atIdleBaseState;
+}
+
 void AtIdleBase::initializeStates() {
-	config->atIdleBaseRunning       = m_running;
-	config->atIdleBaseFetchDataDone = m_fetchDataDone;
-	config->atIdleBaseApplyToRamInd = false;
+	atIdleBaseRunning       = m_running;
+	atIdleBaseFetchDataDone = m_fetchDataDone;
+	atIdleBaseApplyToRamInd = false;
 	config->atIdleBaseStartTempPersist = 0;
 
 	initializeLiveDataStructs();
@@ -55,13 +62,13 @@ void AtIdleBase::toggleRunning() {
 
 			m_running = true;
 			
-			config->atIdleBaseFetchDataDone = false;
+			atIdleBaseFetchDataDone = false;
 
 			m_autoApplyTimer.reset();
 		}
 	}
 
-	config->atIdleBaseRunning = m_running;
+	atIdleBaseRunning = m_running;
 
 	return;
 }
@@ -76,9 +83,9 @@ void AtIdleBase::applyingToRAM() {
 		config->cltIdleCorrTable[1][m] = m_liveData.idleBaseTable[m];
 	}
 
-	config->atIdleBaseApplyToRamInd = true;
-	m_pendingBurn                   = true; 
-	m_tuneRan                       = false;
+	atIdleBaseApplyToRamInd = true;
+	m_pendingBurn           = true;
+	m_tuneRan               = false;
 
 	return;
 }
@@ -138,15 +145,28 @@ void AtIdleBase::onShutdown() {
 }
 
 void AtIdleBase::prepareFetchData() {
-	copyArray(config->cltIdleBaseTableTmp,   m_liveData.idleBaseTable);
-	copyArray(config->cltIdleBaseTableDelta, m_liveData.idleBaseTableDelta);
-	copyArray(config->cltIdleBaseTableHits,  m_liveData.hitCount);
+	copyArray(boardTableLivedataOutput.cltIdleBaseTableTmp,   m_liveData.idleBaseTable);
+	copyArray(boardTableLivedataOutput.cltIdleBaseTableDelta, m_liveData.idleBaseTableDelta);
+	copyArray(boardTableLivedataOutput.cltIdleBaseTableHits,  m_liveData.hitCount);
+
+	m_pageRefreshPending = true;
 
 	return;
 }
 
+// Raises the page refresh flag for exactly one live data read after a fetch,
+// so TS re-reads page 4 once (see board_event_triggers.ini)
+void AtIdleBase::onLiveDataRead() {
+	if (atIdleBasePageRefreshFlag) {
+		atIdleBasePageRefreshFlag = false;
+	} else if (m_pageRefreshPending) {
+		atIdleBasePageRefreshFlag = true;
+		m_pageRefreshPending      = false;
+	}
+}
+
 void AtIdleBase::resetApplyToRAMIndicator() {
-	config->atIdleBaseApplyToRamInd = false;
+	atIdleBaseApplyToRamInd = false;
 
 	return;
 }

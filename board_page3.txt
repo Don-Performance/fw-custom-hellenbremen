@@ -1,0 +1,15 @@
+! TS page 4 (TS_PAGE_BOARD): RAM-only autotune results, never burned, read-only for TS.
+! Filled on "fetch data" (prepareFetchData), served through custom_board_ts_page (board_page3.cpp).
+! Only prepend.txt and rusefi_config_shared.txt defines are visible here, see CLT_IDLE_TABLE_CLT_SIZE in prepend.txt
+struct_no_prefix board_table_livedata_output_s
+uint16_t[VE_LOAD_COUNT x VE_RPM_COUNT] autoscale veFrontTableTmp;;"%", 0.1, 0, 0, 200, 1, noMsqSave,controllerPriority
+int16_t[VE_LOAD_COUNT x VE_RPM_COUNT] autoscale veFrontTableDelta;;"%", 0.1, 0, -200, 200, 1, noMsqSave,controllerPriority
+uint16_t[VE_LOAD_COUNT x VE_RPM_COUNT] autoscale veFrontTableHits;;"", 1, 0, 0, 65535, 1, noMsqSave,controllerPriority
+uint16_t[VE_LOAD_COUNT x VE_RPM_COUNT] autoscale veRearTableTmp;;"%", 0.1, 0, 0, 200, 1, noMsqSave,controllerPriority
+int16_t[VE_LOAD_COUNT x VE_RPM_COUNT] autoscale veRearTableDelta;;"%", 0.1, 0, -200, 200, 1, noMsqSave,controllerPriority
+uint16_t[VE_LOAD_COUNT x VE_RPM_COUNT] autoscale veRearTableHits;;"", 1, 0, 0, 65535, 1, noMsqSave,controllerPriority
+
+float[CLT_IDLE_TABLE_CLT_SIZE] cltIdleBaseTableTmp;;"%", 1, 0, 0, 100, 2, noMsqSave,controllerPriority
+float[CLT_IDLE_TABLE_CLT_SIZE] cltIdleBaseTableDelta;;"%", 1, 0, -100, 100, 2, noMsqSave,controllerPriority
+uint16_t[CLT_IDLE_TABLE_CLT_SIZE] cltIdleBaseTableHits;;"", 1, 0, 0, 65535, 0, noMsqSave,controllerPriority
+end_struct

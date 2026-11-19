@@ -1,0 +1,9 @@
+struct_no_prefix board_actuator_state_s
+	bit cfcActive;CFC: on
+	bit ccfcActive;CCFC: on
+	bit cpcActive;CPC: on
+	bit prgselRunning;Purge solenoid: on
+	bit hasFirmwareError;Error: critical
+	bit hasConfigError;Error: config
+	uint8_t ccfcState;CCFC: state;"", 1, 0, 0, 3, 0
+end_struct
