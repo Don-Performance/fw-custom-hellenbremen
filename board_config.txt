@@ -198,3 +198,5 @@ custom dpecm_hardware_id_t 24 string, ASCII, @OFFSET@, 24, 24
 dpecm_hardware_id_t dpecmHardwareID;96-bit STM32 unique ID as 24 uppercase hex characters (word order UID[2] UID[1] UID[0]). Overwritten on every boot and burn.
 custom dpecm_hardware_rev_t 16 string, ASCII, @OFFSET@, 16, 16
 dpecm_hardware_rev_t dpecmHardwareRev;Hardware revision, programmed once in production into the STM32 OTP memory. Shows UNPROGRAMMED or INVALID if no valid OTP block exists. Overwritten on every boot and burn.
+
+float canRpmFilterAlpha;Smoothing factor for the RPM sent to the dashboard (CAN 0x142, every 10 ms). 1 = unfiltered, lower = calmer needle but slower response. 0.3 settles in ~30 ms, 0.15 in ~60 ms.;"", 1, 0, 0.01, 1, 2
