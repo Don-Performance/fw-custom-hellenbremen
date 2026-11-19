@@ -192,6 +192,9 @@ void boardDefaultConfiguration() {
 	config->ccFootBrakeDisengageThreshold = 50;
 	config->cruiseSetpointRampRate = 2.0f;
 
+	// Dashboard output
+	config->canRpmFilterAlpha = 0.2f;
+
 	// PRGSEL
 	config->prgselOutputPin = Gpio::D10;
 	config->prgselActive = true;
@@ -371,6 +374,11 @@ static void boardSanitizeConfig() {
 	// Vmax
 	if (config->vmaxLimit > 0 && config->vmaxLimitRange == 0) {
 		config->vmaxLimitRange = 1;
+	}
+
+	// Dashboard RPM filter: invalid or missing value (e.g. 0 after layout change) means unfiltered
+	if (!(config->canRpmFilterAlpha > 0.0f && config->canRpmFilterAlpha <= 1.0f)) {
+		config->canRpmFilterAlpha = 1.0f;
 	}
 
 	// Autotune Idle Base
