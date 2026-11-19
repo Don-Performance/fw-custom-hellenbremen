@@ -525,6 +525,9 @@ void boardPeriodicSlow() {
 	boardActuatorState.cpcActive     = cpcPin.getLogicValue();
 	boardActuatorState.prgselRunning = prgselRunning;
 	boardActuatorState.ccfcState     = ccfcActivated ? (3 - static_cast<uint8_t>(ccfcMode)) : 0;
+	// For the app: errors that only a restart clears (warnings are not included)
+	boardActuatorState.hasFirmwareError = hasFirmwareError();
+	boardActuatorState.hasConfigError   = hasConfigError();
 
 	// Put cruise control in standby for negative TGS when CC is enabled
 	 if(currTGS < -5.0f && getCCStatus() == CruiseControlStatus::Enabled) {
