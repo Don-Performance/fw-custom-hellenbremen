@@ -55,8 +55,12 @@ static void o2SensorInitialization() {
 	return;
 }
 
+static void setDpecmHardwareInfo();
+
 // Executed after flash when empty or when factory resetted
 void boardDefaultConfiguration() {
+	setDpecmHardwareInfo();
+
 	// Trigger
 	engineConfiguration->overrideTriggerGaps = true;
 	engineConfiguration->gapTrackingLengthOverride = 3;
@@ -417,10 +421,24 @@ static void setDpecmHardwareRev() {
 	}
 }
 
-// Set when booted and after burn
-void boardConfigOverrides() {
+// dpecmHardwareID / dpecmHardwareRev live in the persistent configuration but are set by the firmware:
+// on boot (first boardConfigOverrides() call), on reset to defaults (boardDefaultConfiguration()) and
+// on burn (boardCustomOnConfigurationChange(), which runs before the flash write is scheduled).
+// Deliberately NOT on every TS page write: rusEFI calls boardConfigOverrides() after each settings
+// chunk write, and rewriting the bytes there makes tools that write a whole map and read it back
+// (e.g. the web application) fail their verification.
+static void setDpecmHardwareInfo() {
 	setDpecmHardwareId();
 	setDpecmHardwareRev();
+}
+
+// Set on boot, reset to defaults, burn and after every TS write to the settings page
+void boardConfigOverrides() {
+	static bool hardwareInfoSet = false;
+	if (!hardwareInfoSet) {
+		setDpecmHardwareInfo();
+		hardwareInfoSet = true;
+	}
 
 	setHellenAnalogDividers();
 	setHellenCan();
@@ -662,6 +680,9 @@ void boardHandleTsCommand(uint16_t subsystem, uint16_t index) {
 }
 
 void boardCustomOnConfigurationChange(engine_configuration_s* previousConfiguration) {
+	// Burn: restore values a TS write may have replaced, before the configuration goes to flash
+	setDpecmHardwareInfo();
+
 	boardSanitizeConfig();
 
 	autotuneState.checkCyclicBufferSize();
