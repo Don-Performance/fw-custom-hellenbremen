@@ -69,6 +69,20 @@ void AtIdleBase::toggleRunning() {
 	}
 
 	atIdleBaseRunning = m_running;
+	applyVirtualPedal(m_running);
+
+	return;
+}
+
+// While the session runs, the filtered pedal reads a virtual 0 %. Everything consuming it
+// (ETB pedal map, DriverThrottleIntent -> idle phase, gauges, CAN) then sees a closed grip.
+// Every stop path (TS toggle, condition abort, shutdown) passes through toggleRunning().
+void AtIdleBase::applyVirtualPedal(bool active) {
+	if (active) {
+		Sensor::setMockValue(SensorType::AcceleratorPedal, 0.0f, true);
+	} else {
+		Sensor::resetMockValue(SensorType::AcceleratorPedal);
+	}
 
 	return;
 }
@@ -172,9 +186,9 @@ void AtIdleBase::resetApplyToRAMIndicator() {
 }
 
 bool AtIdleBase::areIdleBaseConditionsMet() {
+	// No TGS check: the pedal reads a virtual 0 % while the session runs (see applyVirtualPedal())
 	if(m_recordedSample.rpm > config->atIdleBaseMinRpm &&
-	   m_idle().getCurrentPhase() == IIdleController::Phase::Idling &&
-	   m_recordedSample.tgs.Valid && m_recordedSample.tgs.Value < config->atIdleBaseMaxTgs) {
+	   m_idle().getCurrentPhase() == IIdleController::Phase::Idling) {
 		return true;
 	} else {
 		return false;
@@ -363,7 +377,6 @@ void AtIdleBase::periodicSlowCallback() {
 void AtIdleBase::recordProcessing() {
 	m_recordedSample.clt           = Sensor::get(SensorType::Clt);
 	m_recordedSample.rpm           = Sensor::getOrZero(SensorType::Rpm);
-	m_recordedSample.tgs           = Sensor::get(SensorType::AcceleratorPedal);
 	m_recordedSample.idlePos       = m_idle().currentIdlePosition; // "Idle position" gauge
 	m_recordedSample.cellSelection = getIdleBaseTblCellSelection(m_recordedSample.clt.Value);
 

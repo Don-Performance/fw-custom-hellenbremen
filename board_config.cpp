@@ -253,7 +253,6 @@ void boardDefaultConfiguration() {
 	config->atIdleBaseMinRpm = 700;
 	config->atIdleBaseMinClt = 40;
 	config->atIdleBaseMaxClt = 100;
-	config->atIdleBaseMaxTgs = 1;
 
 	config->atIdleBaseAutoApply = true;
 	config->atIdleBaseAutoBurn  = true;

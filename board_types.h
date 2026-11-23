@@ -14,3 +14,5 @@ enum class autotuneCellChangeResistance_e : uint8_t {
 // The size must match the literal there.
 using dpecm_hardware_id_t = char[24];
 using dpecm_hardware_rev_t = char[16];
+// "YYYY-MM-DD HH:MM:SS" plus terminating NUL
+using dpecm_map_date_t = char[20];

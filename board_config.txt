@@ -8,10 +8,11 @@
 
 uint16_t[VE_LOAD_COUNT x VE_RPM_COUNT] autoscale veFrontTable;;"%", 0.1, 0, 0, 200, 1
 int16_t[IGN_LOAD_COUNT x IGN_RPM_COUNT] autoscale ignitionFrontTable;;"deg", 0.1, 0, -20, 90, 1
-uint8_t[PEDAL_TO_TPS_SIZE x PEDAL_TO_TPS_RPM_SIZE] etbRoadTable;;"%", 1, 0, 0, 100, 0
-uint8_t[PEDAL_TO_TPS_SIZE x PEDAL_TO_TPS_RPM_SIZE] etbRainTable;;"%", 1, 0, 0, 100, 0
-uint8_t[PEDAL_TO_TPS_SIZE x PEDAL_TO_TPS_RPM_SIZE] etbSportTable;;"%", 1, 0, 0, 100, 0
-uint8_t[PEDAL_TO_TPS_SIZE x PEDAL_TO_TPS_RPM_SIZE] etbTrackTable;;"%", 1, 0, 0, 100, 0
+uint16_t[PEDAL_TO_TPS_SIZE x PEDAL_TO_TPS_RPM_SIZE] autoscale etbRoadTable;;"%", 0.1, 0, 0, 100, 1
+uint16_t[PEDAL_TO_TPS_SIZE x PEDAL_TO_TPS_RPM_SIZE] autoscale etbRainTable;;"%", 0.1, 0, 0, 100, 1
+uint16_t[PEDAL_TO_TPS_SIZE x PEDAL_TO_TPS_RPM_SIZE] autoscale etbSportTable;;"%", 0.1, 0, 0, 100, 1
+uint16_t[PEDAL_TO_TPS_SIZE x PEDAL_TO_TPS_RPM_SIZE] autoscale etbTrackTable;;"%", 0.1, 0, 0, 100, 1
+uint16_t[PEDAL_TO_TPS_SIZE x PEDAL_TO_TPS_RPM_SIZE] autoscale etbBaseTable;;"%", 0.1, 0, 0, 100, 1
 int16_t[PEDAL_TO_TPS_SIZE x PEDAL_TO_TPS_RPM_SIZE] autoscale estimatedEngineTorqueTable;;"Nm", 0.1, 0, -400, 400, 1
 uint16_t[PEDAL_TO_TPS_RPM_SIZE] estimatedEngineTorqueRpmBins;;"rpm", 1, 0, 0, 12000, 0
 uint8_t[PEDAL_TO_TPS_SIZE] estimatedEngineTorqueTpsBins;;"%", 1, 0, 0, 100, 0
@@ -119,7 +120,6 @@ int16_t atIdleBaseStartTempPersist;;{bitStringValue(unitsLabels, useMetricOnInte
 uint16_t atIdleBaseMinRpm;Learning only above this RPM;"RPM", 1, 0, 0, 18000, 0
 int16_t  atIdleBaseMinClt;Learning can only be started below this CLT;{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, -40, {useMetricOnInterface ? 250 : 482}, 0
 int16_t  atIdleBaseMaxClt;Learning stops above this CLT;{bitStringValue(unitsLabels, useMetricOnInterface)}, {useMetricOnInterface ? 1 : 1.8}, {useMetricOnInterface ? 0 : 17.77777}, -40, {useMetricOnInterface ? 250 : 482}, 0
-uint8_t  atIdleBaseMaxTgs;Learning only below this pedal position;"%", 1, 0, 0, 100, 0
 uint16_t atIdleBaseApplyPeriod;;"sec", 1, 0, 1, 300, 0
 
 float atIdleBaseVeryHighInitialWeight;;"", 1, 0, 0, 1000, 2
@@ -171,5 +171,9 @@ custom dpecm_hardware_id_t 24 string, ASCII, @OFFSET@, 24, 24
 dpecm_hardware_id_t dpecmHardwareID;96-bit STM32 unique ID as 24 uppercase hex characters (word order UID[2] UID[1] UID[0]). Overwritten on every boot and burn.
 custom dpecm_hardware_rev_t 16 string, ASCII, @OFFSET@, 16, 16
 dpecm_hardware_rev_t dpecmHardwareRev;Hardware revision, programmed once in production into the STM32 OTP memory. Shows UNPROGRAMMED or INVALID if no valid OTP block exists. Overwritten on every boot and burn.
+uint32_t dpecmLatestMapId;ID of the map most recently written by the map writing tool. 0 if no map has been written since the last reset to defaults.;"", 1, 0, 0, 4294967295, 0
+! "YYYY-MM-DD HH:MM:SS" is 19 characters, plus the terminating NUL
+custom dpecm_map_date_t 20 string, ASCII, @OFFSET@, 20, 20
+dpecm_map_date_t dpecmLatestMapDate;Date and time ("YYYY-MM-DD HH:MM:SS") the map most recently written by the map writing tool was written. Empty if no map has been written since the last reset to defaults.
 
 float canRpmFilterAlpha;Smoothing factor for the RPM sent to the dashboard (CAN 0x142, every 10 ms). 1 = unfiltered, lower = calmer needle but slower response. 0.3 settles in ~30 ms, 0.15 in ~60 ms.;"", 1, 0, 0.01, 1, 2
