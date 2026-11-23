@@ -28,7 +28,6 @@ public:
 
 	struct atIdleBaseSample_s {
 		SensorResult clt = unexpected; // expected<float> has no default constructor
-		SensorResult tgs = unexpected; // expected<float> has no default constructor
 
 		float rpm;
 		float idlePos;
@@ -81,6 +80,7 @@ private:
 	live_data_atIdleBase_s m_liveData;
 
 	const IdleController& m_idle() const;
+	void applyVirtualPedal(bool active);
 };
 
 extern AtIdleBase atIdleBaseState;
