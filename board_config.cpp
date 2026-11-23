@@ -413,15 +413,24 @@ static void setDpecmHardwareId() {
 
 // Hardware revision block in the STM32F7 OTP area (16 blocks x 64 bytes at FLASH_OTP_BASE).
 // Written once in production over SWD; see bin/make_hw_rev_otp.py, which must match this layout.
+// openBltVersion, manufacturer and programmingDate were reserved (0x00) in older blocks; the layout
+// version stays 1 so older firmware still accepts new blocks. All-zero fields mean "not recorded".
 struct DpecmOtpBlock {
-	char magic[4];          // "DPHW"
-	uint8_t layoutVersion;  // kDpecmOtpLayoutVersion
-	char hardwareRev[16];   // printable ASCII, padded with '\0'
-	uint8_t reserved[39];
-	uint32_t crc;           // CRC32 (zlib) over bytes 0..59, little-endian
+	char magic[4];              // "DPHW"
+	uint8_t layoutVersion;      // kDpecmOtpLayoutVersion
+	char hardwareRev[16];       // printable ASCII, padded with '\0'
+	uint8_t openBltVersion[3];  // MAJOR, MINOR, PATCH
+	char manufacturer[4];       // ASCII, e.g. "WEYT", not null-terminated
+	uint32_t programmingDate;   // Unix time (UTC) of the production programming run
+	uint8_t reserved[28];
+	uint32_t crc;               // CRC32 (zlib) over bytes 0..59, little-endian
 };
 
 static_assert(sizeof(DpecmOtpBlock) == 64, "OTP block must be 64 bytes");
+static_assert(offsetof(DpecmOtpBlock, openBltVersion) == 21, "OTP OpenBLT version must start at byte 21");
+static_assert(offsetof(DpecmOtpBlock, manufacturer) == 24, "OTP manufacturer must start at byte 24");
+static_assert(offsetof(DpecmOtpBlock, programmingDate) == 28, "OTP programming date must start at byte 28");
+static_assert(sizeof(DpecmOtpBlock::manufacturer) == sizeof(dpecm_manufacturer_t), "OTP manufacturer must match dpecmManufacturer");
 static_assert(offsetof(DpecmOtpBlock, crc) == 60, "CRC must be the last 4 bytes of the OTP block");
 static_assert(sizeof(DpecmOtpBlock::hardwareRev) == sizeof(dpecm_hardware_rev_t), "OTP revision must match dpecmHardwareRev");
 
@@ -464,8 +473,82 @@ static bool isOtpBlockValid(const DpecmOtpBlock& block) {
 }
 #endif // EFI_PROD_CODE
 
+// Appends value as decimal digits at pos and advances pos.
+static void appendDecimal(char* out, size_t& pos, uint32_t value, size_t minDigits) {
+	char digits[10];
+	size_t count = 0;
+	do {
+		digits[count++] = static_cast<char>('0' + value % 10);
+		value /= 10;
+	} while (value != 0 && count < sizeof(digits));
+	while (count < minDigits) {
+		digits[count++] = '0';
+	}
+	while (count > 0) {
+		out[pos++] = digits[--count];
+	}
+}
+
+// "MAJOR.MINOR.PATCH"; stays empty if all parts are 0 (not recorded, e.g. an older block)
+static void setDpecmOpenBltVersion(const uint8_t (&version)[3]) {
+	static_assert(sizeof(config->dpecmOpenBltVersion) >= sizeof("255.255.255"), "dpecmOpenBltVersion too small");
+	if ((version[0] | version[1] | version[2]) == 0) {
+		return;
+	}
+	size_t pos = 0;
+	for (size_t i = 0; i < 3; i++) {
+		if (i > 0) {
+			config->dpecmOpenBltVersion[pos++] = '.';
+		}
+		appendDecimal(config->dpecmOpenBltVersion, pos, version[i], 1);
+	}
+}
+
+// Copied only if all 4 characters are printable; otherwise stays empty
+static void setDpecmManufacturer(const char (&manufacturer)[4]) {
+	for (char c : manufacturer) {
+		if (c < 0x20 || c > 0x7E) {
+			return;
+		}
+	}
+	std::memcpy(config->dpecmManufacturer, manufacturer, sizeof(config->dpecmManufacturer));
+}
+
+// "YYYY-MM-DD HH:MM:SS" (UTC); stays empty for 0 (not recorded). Civil date from days since
+// 1970-01-01 after Howard Hinnant's days_from_civil inverse (proleptic Gregorian calendar).
+static void setDpecmProgrammingDate(uint32_t unixTime) {
+	static_assert(sizeof(config->dpecmProgrammingDate) >= sizeof("YYYY-MM-DD HH:MM:SS"), "dpecmProgrammingDate too small");
+	if (unixTime == 0) {
+		return;
+	}
+	const uint32_t secondsOfDay = unixTime % 86400;
+	const uint32_t z = unixTime / 86400 + 719468;  // days since 0000-03-01
+	const uint32_t era = z / 146097;
+	const uint32_t doe = z - era * 146097;
+	const uint32_t yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+	const uint32_t doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+	const uint32_t mp = (5 * doy + 2) / 153;
+	const uint32_t day = doy - (153 * mp + 2) / 5 + 1;
+	const uint32_t month = mp < 10 ? mp + 3 : mp - 9;
+	const uint32_t year = yoe + era * 400 + (month <= 2 ? 1 : 0);
+
+	char* out = config->dpecmProgrammingDate;
+	size_t pos = 0;
+	appendDecimal(out, pos, year, 4);
+	out[pos++] = '-';
+	appendDecimal(out, pos, month, 2);
+	out[pos++] = '-';
+	appendDecimal(out, pos, day, 2);
+	out[pos++] = ' ';
+	appendDecimal(out, pos, secondsOfDay / 3600, 2);
+	out[pos++] = ':';
+	appendDecimal(out, pos, secondsOfDay / 60 % 60, 2);
+	out[pos++] = ':';
+	appendDecimal(out, pos, secondsOfDay % 60, 2);
+}
+
 // The last valid OTP block wins, so a wrong entry can be superseded by programming the next block.
-static void setDpecmHardwareRev() {
+static void setDpecmOtpInfo() {
 	const char* fallback = "UNPROGRAMMED";
 	const DpecmOtpBlock* found = nullptr;
 
@@ -487,14 +570,21 @@ static void setDpecmHardwareRev() {
 #endif // EFI_PROD_CODE
 
 	std::memset(config->dpecmHardwareRev, 0, sizeof(config->dpecmHardwareRev));
+	std::memset(config->dpecmOpenBltVersion, 0, sizeof(config->dpecmOpenBltVersion));
+	std::memset(config->dpecmManufacturer, 0, sizeof(config->dpecmManufacturer));
+	std::memset(config->dpecmProgrammingDate, 0, sizeof(config->dpecmProgrammingDate));
 	if (found != nullptr) {
 		std::memcpy(config->dpecmHardwareRev, found->hardwareRev, sizeof(config->dpecmHardwareRev));
+		setDpecmOpenBltVersion(found->openBltVersion);
+		setDpecmManufacturer(found->manufacturer);
+		setDpecmProgrammingDate(found->programmingDate);
 	} else {
 		std::memcpy(config->dpecmHardwareRev, fallback, std::strlen(fallback));
 	}
 }
 
-// dpecmHardwareID / dpecmHardwareRev live in the persistent configuration but are set by the firmware:
+// dpecmHardwareID / dpecmHardwareRev and the other OTP fields (dpecmOpenBltVersion, dpecmManufacturer,
+// dpecmProgrammingDate) live in the persistent configuration but are set by the firmware:
 // on boot (first boardConfigOverrides() call), on reset to defaults (boardDefaultConfiguration()) and
 // on burn (boardCustomOnConfigurationChange(), which runs before the flash write is scheduled).
 // Deliberately NOT on every TS page write: rusEFI calls boardConfigOverrides() after each settings
@@ -502,7 +592,7 @@ static void setDpecmHardwareRev() {
 // (e.g. the web application) fail their verification.
 static void setDpecmHardwareInfo() {
 	setDpecmHardwareId();
-	setDpecmHardwareRev();
+	setDpecmOtpInfo();
 }
 
 // Set on boot, reset to defaults, burn and after every TS write to the settings page

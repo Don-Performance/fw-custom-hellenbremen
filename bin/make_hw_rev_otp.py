@@ -3,6 +3,7 @@
 
 Typical use (one command per board):
   bin/make_hw_rev_otp.py BREMEN-REV-C          program next free block, verify, lock
+  bin/make_hw_rev_otp.py BREMEN-REV-C --openblt 1.16.0   same, with another OpenBLT version
   bin/make_hw_rev_otp.py --status              show the current OTP state only
   bin/make_hw_rev_otp.py BREMEN-REV-C --dry-run   show what would be written
   bin/make_hw_rev_otp.py --lock-block 0        only lock block 0 (e.g. an invalid one)
@@ -10,7 +11,9 @@ Typical use (one command per board):
 Steps of a programming run:
   1. Read the whole OTP area (0x1FF0F000, 0x420 bytes) via STM32_Programmer_CLI.
   2. Pick the first erased block after the last programmed one (the firmware uses
-     the last valid block, so a new entry always wins over older ones).
+     the last valid block, so a new entry always wins over older ones). Nothing is
+     written if the block the firmware uses already holds the same revision,
+     OpenBLT version and manufacturer.
   3. Ask for confirmation (skip with --yes): OTP writes are permanent.
   4. Write the 64-byte block, read back, validate exactly like the firmware.
   5. Lock the block (skip with --no-lock): the 32-byte lock chunk at 0x1FF0F400
@@ -22,8 +25,14 @@ Block layout, must match DpecmOtpBlock in board_config.cpp:
   bytes  0..3   magic "DPHW"
   byte   4      layout version (1)
   bytes  5..20  hardware revision, printable ASCII, padded with 0x00 (max 16 chars)
-  bytes 21..59  reserved (0x00)
+  bytes 21..23  OpenBLT version MAJOR, MINOR, PATCH (uint8 each)
+  bytes 24..27  manufacturer, 4 ASCII characters (always "WEYT")
+  bytes 28..31  first programming date, Unix time (uint32, UTC), little-endian
+  bytes 32..59  reserved (0x00)
   bytes 60..63  CRC32 (zlib) over bytes 0..59, little-endian
+
+Bytes 21..31 were reserved (0x00) in older blocks; the layout version stays 1, so
+older firmware still accepts new blocks. All-zero fields mean "not recorded".
 
 The CLI location defaults to the macOS install path; override with --cli or the
 STM32_PROGRAMMER_CLI environment variable. The connection defaults to
@@ -32,6 +41,7 @@ pass --connect "port=SWD" for adapters without NRST.
 """
 
 import argparse
+import datetime
 import os
 import struct
 import subprocess
@@ -53,14 +63,52 @@ BLOCK_COUNT = 16
 REV_SIZE = 16
 MAGIC = b"DPHW"
 LAYOUT_VERSION = 1
+OPENBLT_OFFSET = 21
+MANUFACTURER_OFFSET = 24
+MANUFACTURER_SIZE = 4
+DATE_OFFSET = 28
+MANUFACTURER = "WEYT"
+DEFAULT_OPENBLT = "1.16.0"
 
 
 # --- Block format ---------------------------------------------------------------
 
-def build_block(revision: str) -> bytes:
+def build_block(revision: str, openblt: tuple, manufacturer: str, programmed_at: int) -> bytes:
     body = MAGIC + bytes([LAYOUT_VERSION]) + revision.encode("ascii").ljust(REV_SIZE, b"\x00")
+    body += bytes(openblt)
+    body += manufacturer.encode("ascii").ljust(MANUFACTURER_SIZE, b"\x00")
+    body += struct.pack("<I", programmed_at)
     body = body.ljust(BLOCK_SIZE - 4, b"\x00")
     return body + struct.pack("<I", zlib.crc32(body) & 0xFFFFFFFF)
+
+
+def parse_openblt_version(text: str):
+    """Return (major, minor, patch) for "MAJOR.MINOR.PATCH" with each part 0..255, else None."""
+    parts = text.split(".")
+    if len(parts) != 3 or not all(p.isascii() and p.isdigit() and int(p) <= 255 for p in parts):
+        return None
+    return tuple(int(p) for p in parts)
+
+
+def block_identity(block: bytes) -> bytes:
+    """Revision, OpenBLT version and manufacturer; equal identities need no new block."""
+    return block[5:DATE_OFFSET]
+
+
+def describe_extras(block: bytes) -> str:
+    """OpenBLT version, manufacturer and date of a valid block; fields still 0x00 are omitted."""
+    parts = []
+    openblt = block[OPENBLT_OFFSET:OPENBLT_OFFSET + 3]
+    if any(openblt):
+        parts.append("OpenBLT {}.{}.{}".format(*openblt))
+    manufacturer = block[MANUFACTURER_OFFSET:MANUFACTURER_OFFSET + MANUFACTURER_SIZE].rstrip(b"\x00")
+    if manufacturer:
+        parts.append("".join(chr(c) if 0x20 <= c <= 0x7E else "." for c in manufacturer))
+    programmed_at = struct.unpack("<I", block[DATE_OFFSET:DATE_OFFSET + 4])[0]
+    if programmed_at:
+        date = datetime.datetime.fromtimestamp(programmed_at, datetime.timezone.utc)
+        parts.append(date.strftime("%Y-%m-%d %H:%M:%S UTC"))
+    return ", ".join(parts)
 
 
 def check_block(block: bytes):
@@ -139,7 +187,11 @@ class OtpState:
                 content = "erased"
             else:
                 rev, reason = check_block(self.blocks[i])
-                content = f"valid '{rev}'" if rev is not None else f"INVALID: {reason}"
+                if rev is not None:
+                    extras = describe_extras(self.blocks[i])
+                    content = f"valid '{rev}'" + (f", {extras}" if extras else "")
+                else:
+                    content = f"INVALID: {reason}"
             lock = "locked" if self.locked(i) else "-"
             print(f"  {i:2d}       0x{OTP_BASE + i * BLOCK_SIZE:08X}  {lock:6}  {content}")
             if reason is not None:
@@ -251,26 +303,30 @@ def lock_only(args, prog: Programmer, workdir: str) -> int:
 
 def program(args, prog: Programmer, workdir: str) -> int:
     rev = args.revision
+    openblt = parse_openblt_version(args.openblt)
+    # The date of this programming run; Unix time is UTC by definition.
+    block = build_block(rev, openblt, MANUFACTURER, int(time.time()))
+    what = f"'{rev}', OpenBLT {args.openblt}, {MANUFACTURER}"
     state = prog.read_otp(workdir)
     state.print()
     print()
 
-    eff_idx, eff_rev = state.effective()
-    if eff_rev == rev:
+    eff_idx, _ = state.effective()
+    if eff_idx is not None and block_identity(state.blocks[eff_idx]) == block_identity(block):
         if state.locked(eff_idx) or args.no_lock:
-            print(f"Nothing to do: block {eff_idx} already holds '{rev}'"
+            print(f"Nothing to do: block {eff_idx} already holds {what}"
                   f"{' and is locked' if state.locked(eff_idx) else ''}.")
             return 0
         block_idx = eff_idx
         write_data = False
-        print(f"Block {eff_idx} already holds '{rev}' but is not locked; only locking it.")
+        print(f"Block {eff_idx} already holds {what} but is not locked; only locking it.")
     else:
         block_idx = state.next_free_block()
         if block_idx is None:
             print("error: no free OTP block left after the last programmed one", file=sys.stderr)
             return 1
         write_data = True
-        print(f"Plan: write '{rev}' to block {block_idx} at 0x{OTP_BASE + block_idx * BLOCK_SIZE:08X}"
+        print(f"Plan: write {what} to block {block_idx} at 0x{OTP_BASE + block_idx * BLOCK_SIZE:08X}"
               f"{'' if args.no_lock else ', then lock it'}.")
 
     if args.dry_run:
@@ -281,9 +337,9 @@ def program(args, prog: Programmer, workdir: str) -> int:
         return 1
 
     if write_data:
-        prog.write(workdir, "rev_block.bin", build_block(rev), OTP_BASE + block_idx * BLOCK_SIZE)
+        prog.write(workdir, "rev_block.bin", block, OTP_BASE + block_idx * BLOCK_SIZE)
         state = prog.read_otp(workdir)
-        if state.blocks[block_idx] != build_block(rev) or state.effective() != (block_idx, rev):
+        if state.blocks[block_idx] != block or state.effective() != (block_idx, rev):
             print(f"error: read-back of block {block_idx} does not match; NOT locking", file=sys.stderr)
             state.print()
             return 1
@@ -301,6 +357,8 @@ def program(args, prog: Programmer, workdir: str) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("revision", nargs="?", help="hardware revision, 1..16 printable ASCII characters")
+    parser.add_argument("--openblt", default=DEFAULT_OPENBLT, metavar="MAJOR.MINOR.PATCH",
+                        help=f"OpenBLT version to record, each part 0..255 (default: {DEFAULT_OPENBLT})")
     parser.add_argument("--status", action="store_true", help="only read and show the OTP state")
     parser.add_argument("--dry-run", action="store_true", help="read and show the plan, write nothing")
     parser.add_argument("--no-lock", action="store_true", help="write and verify, but do not lock the block")
@@ -323,6 +381,8 @@ def main() -> int:
             parser.error("revision is required unless --status or --lock-block is given")
         if not is_valid_revision(args.revision):
             parser.error(f"revision must be 1..{REV_SIZE} printable ASCII characters")
+        if parse_openblt_version(args.openblt) is None:
+            parser.error("--openblt must look like MAJOR.MINOR.PATCH with each part 0..255, e.g. 1.16.0")
     if not os.path.isfile(args.cli):
         print(f"error: STM32_Programmer_CLI not found at {args.cli}", file=sys.stderr)
         return 1
