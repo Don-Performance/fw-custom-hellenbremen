@@ -196,17 +196,22 @@ uint16_t autoscale cruiseSetpointRampRate;Cruise control ramps its target speed 
 ! Literal size: board_config.txt is loaded via -readfile, which resolves double-at variable references before any #define (here or in prepend.txt) is known
 custom dpecm_hardware_id_t 24 string, ASCII, @OFFSET@, 24, 24
 dpecm_hardware_id_t dpecmHardwareID;96-bit STM32 unique ID as 24 uppercase hex characters (word order UID[2] UID[1] UID[0]). Overwritten on every boot and burn.
+
 custom dpecm_hardware_rev_t 16 string, ASCII, @OFFSET@, 16, 16
 dpecm_hardware_rev_t dpecmHardwareRev;Hardware revision, programmed once in production into the STM32 OTP memory. Shows UNPROGRAMMED or INVALID if no valid OTP block exists. Overwritten on every boot and burn.
+
 ! "255.255.255" is 11 characters, plus the terminating NUL
 custom dpecm_openblt_version_t 12 string, ASCII, @OFFSET@, 12, 12
 dpecm_openblt_version_t dpecmOpenBltVersion;OpenBLT bootloader version ("MAJOR.MINOR.PATCH") recorded in the OTP block during production. Empty if not recorded. Overwritten on every boot and burn.
+
 custom dpecm_manufacturer_t 4 string, ASCII, @OFFSET@, 4, 4
 dpecm_manufacturer_t dpecmManufacturer;Manufacturer code (4 characters) recorded in the OTP block during production. Empty if not recorded. Overwritten on every boot and burn.
-dpecm_map_date_t dpecmProgrammingDate;Date and time (UTC, "YYYY-MM-DD HH:MM:SS") the OTP block in use was programmed during production. Empty if not recorded. Overwritten on every boot and burn.
+
 uint32_t dpecmLatestMapId;ID of the map most recently written by the map writing tool. 0 if no map has been written since the last reset to defaults.;"", 1, 0, 0, 4294967295, 0
+
 ! "YYYY-MM-DD HH:MM:SS" is 19 characters, plus the terminating NUL
 custom dpecm_map_date_t 20 string, ASCII, @OFFSET@, 20, 20
 dpecm_map_date_t dpecmLatestMapDate;Date and time ("YYYY-MM-DD HH:MM:SS") the map most recently written by the map writing tool was written. Empty if no map has been written since the last reset to defaults.
+dpecm_map_date_t dpecmProgrammingDate;Date and time (UTC, "YYYY-MM-DD HH:MM:SS") the OTP block in use was programmed during production. Empty if not recorded. Overwritten on every boot and burn.
 
 float canRpmFilterAlpha;Smoothing factor for the RPM sent to the dashboard (CAN 0x142, every 10 ms). 1 = unfiltered, lower = calmer needle but slower response. 0.3 settles in ~30 ms, 0.15 in ~60 ms.;"", 1, 0, 0.01, 1, 2
