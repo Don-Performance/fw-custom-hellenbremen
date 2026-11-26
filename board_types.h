@@ -25,4 +25,4 @@ using dpecm_openblt_version_t = char[12];
 // Fixed length, not null-terminated, like dpecm_hardware_id_t
 using dpecm_manufacturer_t = char[4];
 // "YYYY-MM-DD HH:MM:SS" plus terminating NUL
-using dpecm_map_date_t = char[20];
+using dpecm_date_t = char[20];
